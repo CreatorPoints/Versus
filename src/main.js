@@ -257,6 +257,7 @@ class App {
 
     document.getElementById('btnExitGame').addEventListener('click', () => {
       sound.playClick();
+      sound.stopFootballCrowd();
       network.disconnect();
       this.isPlaying = false;
       countdown.active = false;
@@ -283,6 +284,7 @@ class App {
 
     document.getElementById('btnModalLobby').addEventListener('click', () => {
       sound.playClick();
+      sound.stopFootballCrowd();
       document.getElementById('winnerModal').classList.add('hidden');
       network.disconnect();
       this.isPlaying = false;
