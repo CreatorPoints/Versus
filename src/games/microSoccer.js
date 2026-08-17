@@ -1,6 +1,6 @@
 /**
  * VERSUS - Micro Soccer Mini-Game
- * Bouncy capsule physics, aerial jumps, flip kicks, stadium crowd SFX!
+ * Bouncy capsule physics, dynamic burst acceleration, sliding friction, aerial bicycle kicks, crowd SFX!
  */
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
@@ -39,10 +39,10 @@ export class MicroSoccer {
       rotation: 0
     };
 
-    let p2Speed = 4.8;
-    if (this.difficulty === 'baby') p2Speed = 2.8;
-    else if (this.difficulty === 'hard') p2Speed = 6.0;
-    else if (this.difficulty === 'demon') p2Speed = 7.4;
+    let p2Speed = 6.2;
+    if (this.difficulty === 'baby') p2Speed = 3.8;
+    else if (this.difficulty === 'hard') p2Speed = 7.2;
+    else if (this.difficulty === 'demon') p2Speed = 8.4;
 
     this.p1 = {
       x: 160,
@@ -53,10 +53,13 @@ export class MicroSoccer {
       h: 46,
       radius: 14,
       color: '#0ea5e9',
-      speed: 4.8,
+      speed: 6.2,
       isGrounded: true,
       flipAngle: 0,
-      isFlipping: false
+      isFlipping: false,
+      squashX: 1,
+      squashY: 1,
+      tilt: 0
     };
 
     this.p2 = {
@@ -71,12 +74,15 @@ export class MicroSoccer {
       speed: p2Speed,
       isGrounded: true,
       flipAngle: 0,
-      isFlipping: false
+      isFlipping: false,
+      squashX: 1,
+      squashY: 1,
+      tilt: 0
     };
 
     this.roundEnding = false;
 
-    // Play football crowd ambience for the first 6 seconds
+    // Start looping football crowd ambience
     sound.playFootballCrowd();
 
     if (this.onRoundReset) this.onRoundReset();
@@ -137,25 +143,54 @@ export class MicroSoccer {
   }
 
   updatePlayer(p, input, facing) {
-    const moveSpeed = p.speed;
-    const jumpForce = -9.2;
-    const gravity = 0.42;
+    const maxSpeed = p.speed;
+    const burstAccel = 1.35;
+    const groundFriction = 0.88;
+    const airFriction = 0.97;
+    const jumpForce = -9.8;
+    const gravity = 0.44;
 
-    p.vx = input.x * moveSpeed;
+    // 1. Dynamic Burst Start & Sliding Stop
+    if (Math.abs(input.x) > 0.1) {
+      if (Math.sign(input.x) !== Math.sign(p.vx) && Math.abs(p.vx) > 1.8) {
+        // Skid turn
+        p.vx += input.x * burstAccel * 1.6;
+        if (p.isGrounded && Math.random() < 0.4) {
+          particles.spawnSparks(p.x, this.groundY - 4, '#ffffff', 3, 2);
+        }
+      } else {
+        // Fast burst acceleration
+        p.vx += input.x * burstAccel;
+      }
+      p.vx = Math.max(-maxSpeed, Math.min(maxSpeed, p.vx));
+    } else {
+      // Inertial slide on stop
+      const friction = p.isGrounded ? groundFriction : airFriction;
+      p.vx *= friction;
+
+      if (p.isGrounded && Math.abs(p.vx) > 2.2 && Math.random() < 0.25) {
+        particles.spawnTrail(p.x, this.groundY - 2, 'rgba(255, 255, 255, 0.4)', 2.5);
+      }
+      if (Math.abs(p.vx) < 0.05) p.vx = 0;
+    }
+
     p.x += p.vx;
-
     p.x = Math.max(this.goalWidth + p.radius, Math.min(this.width - this.goalWidth - p.radius, p.x));
 
+    // 2. Jump Dynamics & Squash/Stretch
     if ((input.y < -0.5 || input.action) && p.isGrounded) {
       p.vy = jumpForce;
       p.isGrounded = false;
+      p.squashX = 0.78;
+      p.squashY = 1.3;
       sound.playBallKick();
-      particles.spawnSparks(p.x, p.y + p.h / 2, p.color, 4);
+      particles.spawnSparks(p.x, this.groundY, p.color, 6, 3);
     }
 
+    // 3. Air Flip
     if (input.action && !p.isGrounded) {
       p.isFlipping = true;
-      p.flipAngle += facing * 0.35;
+      p.flipAngle += facing * 0.38;
     } else {
       p.flipAngle = 0;
       p.isFlipping = false;
@@ -164,11 +199,25 @@ export class MicroSoccer {
     p.vy += gravity;
     p.y += p.vy;
 
+    // Ground Landing & Squash
     if (p.y >= this.groundY - p.h / 2) {
+      if (!p.isGrounded && p.vy > 3) {
+        p.squashX = 1.25;
+        p.squashY = 0.8;
+        particles.spawnSparks(p.x, this.groundY, '#ffffff', 4, 1.5);
+      }
       p.y = this.groundY - p.h / 2;
       p.vy = 0;
       p.isGrounded = true;
     }
+
+    // Recover squash & stretch
+    p.squashX += (1 - p.squashX) * 0.18;
+    p.squashY += (1 - p.squashY) * 0.18;
+
+    // Dynamic tilt in sprint / skid
+    const targetTilt = p.isGrounded ? (p.vx / maxSpeed) * 0.22 : 0;
+    p.tilt += (targetTilt - p.tilt) * 0.25;
   }
 
   checkPlayerBallCollision(p, facing) {
@@ -184,9 +233,9 @@ export class MicroSoccer {
       this.ball.x = p.x + nx * minDist;
       this.ball.y = p.y + ny * minDist;
 
-      const kickPower = p.isFlipping ? 12.5 : 7.5;
-      this.ball.vx = nx * kickPower + p.vx * 0.6;
-      this.ball.vy = ny * kickPower + p.vy * 0.6;
+      const kickPower = p.isFlipping ? 13.0 : 8.2;
+      this.ball.vx = nx * kickPower + p.vx * 0.65;
+      this.ball.vy = ny * kickPower + p.vy * 0.65;
 
       sound.playBallKick();
       particles.shake(p.isFlipping ? 8 : 4, 6);
@@ -203,7 +252,6 @@ export class MicroSoccer {
     this.roundEnding = true;
 
     sound.playCheer();
-    sound.playFootballCrowd();
     particles.spawnExplosion(this.ball.x, this.ball.y, scorer === 1 ? '#0ea5e9' : '#f43f5e', 35);
     particles.shake(14, 20);
 
@@ -323,15 +371,24 @@ export class MicroSoccer {
   drawCapsulePlayer(p) {
     this.ctx.save();
     this.ctx.translate(p.x, p.y);
-    this.ctx.rotate(p.flipAngle);
+    this.ctx.rotate(p.isFlipping ? p.flipAngle : p.tilt);
+    this.ctx.scale(p.squashX, p.squashY);
 
+    // Dynamic ground shadow
+    this.ctx.fillStyle = 'rgba(15, 23, 42, 0.15)';
+    this.ctx.beginPath();
+    this.ctx.ellipse(0, p.h / 2, p.w * 0.7, 4, 0, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Capsule body
     this.ctx.fillStyle = p.color;
     this.ctx.beginPath();
     this.ctx.roundRect(-p.w / 2, -p.h / 2, p.w, p.h, p.radius);
     this.ctx.fill();
 
+    // Player headband / visor
     this.ctx.fillStyle = '#ffffff';
-    this.ctx.fillRect(-6, -p.h / 2 + 8, 12, 6);
+    this.ctx.fillRect(-p.w * 0.35, -p.h / 2 + 8, p.w * 0.7, 6);
 
     this.ctx.restore();
   }
