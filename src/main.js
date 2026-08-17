@@ -345,6 +345,53 @@ class App {
       }
     });
 
+    document.getElementById('btnCopyAnalysisPng').addEventListener('click', async () => {
+      const copyBtn = document.getElementById('btnCopyAnalysisPng');
+      const card = document.getElementById('chessAnalysisCard');
+      if (!card) return;
+
+      const origText = copyBtn.textContent;
+      copyBtn.textContent = '📸 Generating...';
+
+      try {
+        const { toBlob, toPng } = await import('html-to-image');
+        const blob = await toBlob(card, {
+          pixelRatio: 2,
+          backgroundColor: '#ffffff'
+        });
+
+        if (!blob) throw new Error('Blob generation failed');
+
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+
+        sound.playVictory();
+        copyBtn.textContent = 'PNG Copied! ✓';
+        setTimeout(() => {
+          copyBtn.textContent = origText;
+        }, 2200);
+      } catch (err) {
+        try {
+          const { toPng } = await import('html-to-image');
+          const dataUrl = await toPng(card, { pixelRatio: 2, backgroundColor: '#ffffff' });
+          const a = document.createElement('a');
+          a.download = 'versus-chess-analysis.png';
+          a.href = dataUrl;
+          a.click();
+          copyBtn.textContent = 'PNG Saved! ✓';
+          setTimeout(() => {
+            copyBtn.textContent = origText;
+          }, 2200);
+        } catch (e) {
+          copyBtn.textContent = 'Error Capturing';
+          setTimeout(() => {
+            copyBtn.textContent = origText;
+          }, 2000);
+        }
+      }
+    });
+
     document.getElementById('btnAnalysisRematch').addEventListener('click', () => {
       sound.playClick();
       document.getElementById('chessAnalysisModal').classList.add('hidden');

@@ -445,7 +445,7 @@
     <!-- 4. MODALS -->
     <!-- Chess Lichess-Style Game Analysis & Review Modal -->
     <div id="chessAnalysisModal" class="modal-backdrop hidden">
-      <div class="modal-card analysis-card">
+      <div id="chessAnalysisCard" class="modal-card analysis-card">
         <div class="analysis-header">
           <div class="analysis-badge">♟️ GAME REVIEW & ANALYSIS</div>
           <h2 id="analysisResultTitle" class="modal-title" style="margin: 4px 0 2px;">White Wins by Checkmate</h2>
@@ -538,8 +538,9 @@
           <div id="analysisPgnContent" class="pgn-scroll-box" tabindex="0">1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. d3 Nf6</div>
         </div>
 
-        <!-- Navigation Buttons (Return only via buttons) -->
-        <div class="modal-btn-row" style="margin-top: 14px;">
+        <!-- Navigation Buttons -->
+        <div class="modal-btn-row" style="margin-top: 14px; flex-wrap: wrap;">
+          <button id="btnCopyAnalysisPng" class="secondary-fun-btn" style="background: var(--p1-blue-bg); color: var(--p1-blue); border-color: var(--p1-blue);" title="Snapshot and copy analysis card to clipboard as PNG">📸 Copy as PNG</button>
           <button id="btnAnalysisRematch" class="primary-fun-btn">Rematch ↻</button>
           <button id="btnAnalysisLobby" class="secondary-fun-btn">Back to Lobby ⌂</button>
         </div>
