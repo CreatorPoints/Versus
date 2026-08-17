@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "photon-core"
+  },
+  "targets": {
+    "photon-core": {
+      "hosting": {
+        "versus": [
+          "versus-party"
+        ]
+      }
+    }
+  }
+}
