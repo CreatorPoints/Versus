@@ -9,12 +9,10 @@ import { network } from './engine/network.js';
 import { countdown } from './engine/countdown.js';
 
 // Games
-import { TankBattle } from './games/tankBattle.js';
 import { GlowHockey } from './games/glowHockey.js';
 import { SumoSpinners } from './games/sumoSpinners.js';
 import { QuickDraw } from './games/quickDraw.js';
 import { MicroSoccer } from './games/microSoccer.js';
-import { BladeClash } from './games/bladeClash.js';
 import { MicroRace } from './games/microRace.js';
 import { PinballDuel } from './games/pinballDuel.js';
 
@@ -23,7 +21,7 @@ class App {
     this.canvas = document.getElementById('gameCanvas');
     this.ctx = this.canvas.getContext('2d', { alpha: false, desynchronized: true });
     
-    this.currentGameKey = 'tank';
+    this.currentGameKey = 'hockey';
     this.currentGameInstance = null;
     this.gameMode = 'ai';
     this.difficulty = 'normal';
@@ -38,57 +36,43 @@ class App {
 
     this.allGames = [
       { 
-        key: 'tank', 
-        name: 'Tank Battle', 
-        tag: 'Ricochet Bullets',
-        desc: 'Drive your combat tank, bounce bullets off steel walls, smash obstacles, and eliminate your opponent before they hit you!',
-        class: TankBattle 
-      },
-      { 
         key: 'hockey', 
-        name: 'Glow Hockey', 
+        name: 'Hockey', 
         tag: 'Mouse / Keys',
         desc: 'Fast-paced arcade air hockey! Move paddle directly with Mouse or WASD, charge power smash shots, and blast goals into the opponent net.',
         class: GlowHockey 
       },
       { 
         key: 'sumo', 
-        name: 'Sumo Spinners', 
+        name: 'SPinner war', 
         tag: 'Ring Out!',
         desc: 'Clash in a crumbling hexagon arena where edge tiles fall into the abyss over time! Boost-ram your opponent off the edge.',
         class: SumoSpinners 
       },
       { 
         key: 'draw', 
-        name: 'Quick Draw', 
+        name: 'quick shot', 
         tag: 'Reflex Duel',
         desc: 'Wild West reaction shootout! Wait for the official "FIRE!" cue without misfiring early, and strike with lightning reflexes.',
         class: QuickDraw 
       },
       { 
         key: 'soccer', 
-        name: 'Micro Soccer', 
+        name: 'Soccer', 
         tag: 'Bicycle Kick',
         desc: '1v1 physics capsule soccer. Leap into the air, flip and bicycle kick the ball into the net before time expires!',
         class: MicroSoccer 
       },
       { 
-        key: 'blade', 
-        name: 'Blade Clash', 
-        tag: 'Parry & Strike',
-        desc: 'High skill cyber warrior duel! Dash strike with your laser katana and time your parry to stun the enemy and counter-slash.',
-        class: BladeClash 
-      },
-      { 
         key: 'race', 
-        name: 'Micro Race', 
-        tag: 'Kart Drift',
-        desc: 'Top-down arcade kart racing! Drift tight around curves, hit max speed, and be the first to complete 3 full laps.',
+        name: 'RACE', 
+        tag: 'Variable Maps',
+        desc: 'Top-down arcade kart grand prix with variable tracks (Speedway, Cyber GP, Desert Oval)! Drift tight around curves and conquer 3 full laps.',
         class: MicroRace 
       },
       { 
         key: 'pinball', 
-        name: 'Pinball Duel', 
+        name: 'Pinball', 
         tag: 'Bumper Bounce',
         desc: 'Dual-paddle pinball table with high-impulse bumpers in the center! Angle your deflection shots to slip past the opponent.',
         class: PinballDuel 
@@ -99,7 +83,7 @@ class App {
     this.initUI();
     this.initTouchControls();
     this.initNetworkListeners();
-    this.selectGame('tank');
+    this.selectGame('hockey');
     this.setupCanvasDPI();
     this.startLoop();
     
