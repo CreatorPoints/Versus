@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="VERSUS - 2-Player Web Game Suite! Play 1v1 against random online opponents from around the world, challenge friends with room codes, or play local same-screen battles." />
+  <title>VERSUS | 2-Player Realtime Duel & Party Games</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='50' font-weight='bold' fill='%2300f0ff'>V</text><text x='70%' y='65%' dominant-baseline='middle' text-anchor='middle' font-size='36' font-weight='bold' fill='%23ff2e63'>S</text></svg>" />
+  <link rel="stylesheet" href="/src/styles/index.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Ambient Lighting -->
+    <div class="ambient-glow glow-left"></div>
+    <div class="ambient-glow glow-right"></div>
+
+    <!-- 1. LOBBY VIEW -->
+    <main id="lobbyScreen" class="view-screen">
+      <div class="lobby-content">
+        <!-- Logo -->
+        <header class="logo-header">
+          <h1 class="logo-title">
+            <span class="ver">VER</span>
+            <span class="divider">⚡</span>
+            <span class="sus">SUS</span>
+          </h1>
+          <p class="logo-subtitle">2-Player Realtime Arcade Arena</p>
+        </header>
+
+        <!-- Mode Select Cards -->
+        <section class="mode-grid">
+          <div id="btnQuickMatch" class="mode-card primary">
+            <div class="mode-icon">🌐</div>
+            <h2 class="mode-title">Quick Duel</h2>
+            <p class="mode-desc">Instantly duel a random challenger from the internet.</p>
+            <span class="mode-badge">Instant 1v1</span>
+          </div>
+
+          <div id="btnTournament" class="mode-card tournament">
+            <div class="mode-icon">🏆</div>
+            <h2 class="mode-title">Tournament</h2>
+            <p class="mode-desc">Best of 5 random mini-games rotation for the trophy!</p>
+            <span class="mode-badge">Best of 5</span>
+          </div>
+
+          <div id="btnLocal2P" class="mode-card local">
+            <div class="mode-icon">👥</div>
+            <h2 class="mode-title">Local 2-Player</h2>
+            <p class="mode-desc">Play on the same screen (WASD vs Arrows / Touch).</p>
+            <span class="mode-badge">Same Device</span>
+          </div>
+
+          <div id="btnPrivateRoom" class="mode-card">
+            <div class="mode-icon">🔑</div>
+            <h2 class="mode-title">Private Room</h2>
+            <p class="mode-desc">Invite a friend with a custom 4-letter room code.</p>
+            <span class="mode-badge">Friend Match</span>
+          </div>
+        </section>
+
+        <!-- Mini-Game Selection Grid -->
+        <section class="game-select-section">
+          <div class="section-header">
+            <span class="section-title">Select Mini-Game</span>
+          </div>
+          <div id="gamePickerGrid" class="game-grid">
+            <div class="game-chip selected" data-game="tank">
+              <span class="game-chip-icon">🛡️</span>
+              <span class="game-chip-name">Tank Battle</span>
+            </div>
+            <div class="game-chip" data-game="hockey">
+              <span class="game-chip-icon">🏒</span>
+              <span class="game-chip-name">Glow Hockey</span>
+            </div>
+            <div class="game-chip" data-game="sumo">
+              <span class="game-chip-icon">🌀</span>
+              <span class="game-chip-name">Sumo Spinners</span>
+            </div>
+            <div class="game-chip" data-game="draw">
+              <span class="game-chip-icon">🤠</span>
+              <span class="game-chip-name">Quick Draw</span>
+            </div>
+            <div class="game-chip" data-game="soccer">
+              <span class="game-chip-icon">⚽</span>
+              <span class="game-chip-name">Micro Soccer</span>
+            </div>
+            <div class="game-chip" data-game="blade">
+              <span class="game-chip-icon">⚔️</span>
+              <span class="game-chip-name">Blade Clash</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Footer / Utility Actions -->
+        <footer class="lobby-footer">
+          <button id="btnToggleSound" class="icon-btn" title="Toggle Sound">
+            <span id="soundIcon">🔊</span>
+            <span id="soundText">Sound ON</span>
+          </button>
+          <button id="btnControlsGuide" class="icon-btn" title="Controls Guide">
+            <span>🎮</span>
+            <span>How to Play</span>
+          </button>
+        </footer>
+      </div>
+    </main>
+
+    <!-- 2. RADAR MATCHMAKING VIEW -->
+    <section id="radarScreen" class="view-screen hidden">
+      <div class="radar-container">
+        <div class="radar-circle">
+          <div class="radar-sweep"></div>
+          <span class="radar-icon">📡</span>
+        </div>
+        <h2 id="radarTitle" class="radar-text">Finding Internet Challenger...</h2>
+        <p id="radarStatus" class="radar-status">Scanning global matchmaking pool</p>
+        <button id="btnCancelMatch" class="secondary-btn" style="margin-top: 16px;">Cancel</button>
+      </div>
+    </section>
+
+    <!-- 3. GAME ARENA VIEW -->
+    <section id="gameScreen" class="view-screen hidden">
+      <header class="game-hud">
+        <button id="btnExitGame" class="hud-btn">✕ Exit</button>
+        <div id="matchInfoBadge" class="match-info-badge">TANK BATTLE</div>
+        <button id="btnRestartRound" class="hud-btn">↻ Reset</button>
+      </header>
+
+      <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+      <!-- On-Screen Virtual Controls (Mobile / Tablet) -->
+      <div id="mobileControls" class="mobile-controls hidden">
+        <div id="touchStick" class="touch-stick-zone">
+          <div id="touchThumb" class="touch-stick-thumb"></div>
+        </div>
+        <div id="touchAction" class="touch-action-btn">ACTION</div>
+      </div>
+    </section>
+
+    <!-- 4. MODALS -->
+    <!-- Winner / Game Over Modal -->
+    <div id="winnerModal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-winner-badge">🏆</div>
+        <h2 id="winnerText" class="modal-title">PLAYER 1 WINS!</h2>
+        <div id="modalScoreText" class="modal-score">
+          <span style="color: var(--p1-cyan);">3</span>
+          <span style="color: rgba(255,255,255,0.4);">-</span>
+          <span style="color: var(--p2-red);">1</span>
+        </div>
+        <div class="modal-btn-row">
+          <button id="btnRematch" class="primary-btn">Rematch ↻</button>
+          <button id="btnModalLobby" class="secondary-btn">Lobby ⌂</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Private Room Modal -->
+    <div id="roomModal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <h2 class="modal-title">Private Room</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Share room code with your friend to duel directly.</p>
+        
+        <div style="display: flex; gap: 8px; width: 100%; margin: 8px 0;">
+          <input id="roomCodeInput" type="text" placeholder="ROOM CODE (e.g. VS99)" maxlength="6" style="flex: 1; padding: 12px; background: #1e293b; border: 1px solid var(--border-active); color: #fff; border-radius: var(--radius-md); font-family: monospace; font-size: 1.1rem; text-align: center; text-transform: uppercase;" />
+        </div>
+
+        <div class="modal-btn-row">
+          <button id="btnJoinRoom" class="primary-btn">Join Room</button>
+          <button id="btnCreateRoom" class="secondary-btn">Create New</button>
+        </div>
+        <button id="btnCloseRoomModal" class="secondary-btn" style="width: 100%;">Close</button>
+      </div>
+    </div>
+
+    <!-- Controls Guide Modal -->
+    <div id="guideModal" class="modal-backdrop hidden">
+      <div class="modal-card" style="max-width: 480px;">
+        <h2 class="modal-title">Controls Guide</h2>
+        <div class="guide-list">
+          <div class="guide-row">
+            <span style="color: var(--p1-cyan); font-weight: 700;">Player 1 (Cyan):</span>
+            <div><span class="key-tag">W A S D</span> + <span class="key-tag">SPACE</span></div>
+          </div>
+          <div class="guide-row">
+            <span style="color: var(--p2-red); font-weight: 700;">Player 2 (Red):</span>
+            <div><span class="key-tag">↑ ← ↓ →</span> + <span class="key-tag">ENTER</span></div>
+          </div>
+          <div class="guide-row">
+            <span style="color: var(--gold-accent); font-weight: 700;">Mobile / Touch:</span>
+            <span>Virtual Joystick & Action Button</span>
+          </div>
+        </div>
+        <button id="btnCloseGuideModal" class="primary-btn" style="width: 100%;">Got It!</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

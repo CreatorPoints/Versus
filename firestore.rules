@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Multiplayer matchmaking queue and active match rooms
+    match /versus_matchmaking/{roomId} {
+      allow read, write: if true;
+    }
+    match /versus_rooms/{roomId} {
+      allow read, write: if true;
+    }
+  }
+}
