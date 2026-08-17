@@ -316,6 +316,35 @@ class App {
       }
     });
 
+    document.getElementById('btnCopyPgn').addEventListener('click', async () => {
+      const pgnText = document.getElementById('analysisPgnContent').textContent;
+      const copyBtn = document.getElementById('btnCopyPgn');
+      try {
+        await navigator.clipboard.writeText(pgnText);
+        copyBtn.textContent = 'Copied! ✓';
+        copyBtn.classList.add('copied');
+        sound.playClick();
+        setTimeout(() => {
+          copyBtn.textContent = '📋 Copy PGN';
+          copyBtn.classList.remove('copied');
+        }, 2000);
+      } catch (err) {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = pgnText;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        copyBtn.textContent = 'Copied! ✓';
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          copyBtn.textContent = '📋 Copy PGN';
+          copyBtn.classList.remove('copied');
+        }, 2000);
+      }
+    });
+
     document.getElementById('btnAnalysisRematch').addEventListener('click', () => {
       sound.playClick();
       document.getElementById('chessAnalysisModal').classList.add('hidden');
@@ -595,8 +624,19 @@ class App {
 
     // If Chess game review is available, show Lichess-style analysis modal!
     if (analysisData) {
-      document.getElementById('analysisResultTitle').textContent = `${analysisData.winner === 1 ? 'White' : 'Black'} Won by ${analysisData.reason}`;
-      document.getElementById('analysisSubtitle').textContent = `${analysisData.totalMoves} Total Moves • Lichess-Grade Game Review`;
+      let winTitle = `${analysisData.winner === 1 ? 'White' : 'Black'} Won by ${analysisData.reason}`;
+      if (analysisData.reason === 'White Resigned') {
+        winTitle = 'Black Won (White Resigned)';
+      } else if (analysisData.reason === 'Black Resigned') {
+        winTitle = 'White Won (Black Resigned)';
+      } else if (analysisData.reason === 'King Captured') {
+        winTitle = `${analysisData.winner === 1 ? 'White' : 'Black'} Won (King Captured)`;
+      } else if (analysisData.reason === 'Checkmate') {
+        winTitle = `${analysisData.winner === 1 ? 'White' : 'Black'} Won by Checkmate`;
+      }
+
+      document.getElementById('analysisResultTitle').textContent = winTitle;
+      document.getElementById('analysisSubtitle').textContent = `${analysisData.fullMoves} Full Moves (${analysisData.totalPlies} Plies) • Lichess-Grade Game Review`;
       
       document.getElementById('analysisP1Name').textContent = 'Player 1 (White)';
       document.getElementById('analysisP2Name').textContent = this.gameMode === 'ai' ? `AI Bot [${this.difficulty.toUpperCase()}]` : 'Player 2 (Black)';

@@ -531,8 +531,11 @@
 
         <!-- PGN Notation Container -->
         <div class="pgn-container">
-          <div class="pgn-header">📜 PGN Move Log:</div>
-          <div id="analysisPgnContent" class="pgn-scroll-box">1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. d3 Nf6</div>
+          <div class="pgn-header-row" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <span class="pgn-header">📜 PGN Move Notation</span>
+            <button id="btnCopyPgn" class="pgn-copy-btn" title="Copy game moves to clipboard">📋 Copy PGN</button>
+          </div>
+          <div id="analysisPgnContent" class="pgn-scroll-box" tabindex="0">1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. d3 Nf6</div>
         </div>
 
         <!-- Navigation Buttons (Return only via buttons) -->
