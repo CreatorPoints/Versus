@@ -1,6 +1,6 @@
 /**
  * VERSUS - Micro Soccer Mini-Game
- * Bouncy capsule physics, aerial jumps, flip kicks, AI difficulties!
+ * Bouncy capsule physics, aerial jumps, flip kicks, stadium crowd SFX!
  */
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
@@ -75,6 +75,10 @@ export class MicroSoccer {
     };
 
     this.roundEnding = false;
+
+    // Play football crowd ambience for the first 6 seconds
+    sound.playFootballCrowd();
+
     if (this.onRoundReset) this.onRoundReset();
   }
 
@@ -98,12 +102,13 @@ export class MicroSoccer {
       if (this.ball.y + this.ball.radius >= this.groundY) {
         this.ball.y = this.groundY - this.ball.radius;
         this.ball.vy = -this.ball.vy * this.ball.bounce;
-        if (Math.abs(this.ball.vy) > 2) sound.playBounce();
+        if (Math.abs(this.ball.vy) > 1.8) sound.playBallBounce();
       }
 
       if (this.ball.y - this.ball.radius <= 10) {
         this.ball.y = 10 + this.ball.radius;
         this.ball.vy *= -1;
+        sound.playBallBounce(true);
       }
 
       if (this.ball.x - this.ball.radius <= this.goalWidth) {
@@ -112,7 +117,7 @@ export class MicroSoccer {
         } else {
           this.ball.x = this.goalWidth + this.ball.radius;
           this.ball.vx = -this.ball.vx * this.ball.bounce;
-          sound.playBounce();
+          sound.playBallBounce();
         }
       }
 
@@ -122,7 +127,7 @@ export class MicroSoccer {
         } else {
           this.ball.x = this.width - this.goalWidth - this.ball.radius;
           this.ball.vx = -this.ball.vx * this.ball.bounce;
-          sound.playBounce();
+          sound.playBallBounce();
         }
       }
 
@@ -144,7 +149,7 @@ export class MicroSoccer {
     if ((input.y < -0.5 || input.action) && p.isGrounded) {
       p.vy = jumpForce;
       p.isGrounded = false;
-      sound.playShoot();
+      sound.playBallKick();
       particles.spawnSparks(p.x, p.y + p.h / 2, p.color, 4);
     }
 
@@ -183,7 +188,7 @@ export class MicroSoccer {
       this.ball.vx = nx * kickPower + p.vx * 0.6;
       this.ball.vy = ny * kickPower + p.vy * 0.6;
 
-      sound.playHit();
+      sound.playBallKick();
       particles.shake(p.isFlipping ? 8 : 4, 6);
       particles.spawnSparks(this.ball.x, this.ball.y, p.color, 8, 4);
 
@@ -197,7 +202,8 @@ export class MicroSoccer {
     if (this.roundEnding) return;
     this.roundEnding = true;
 
-    sound.playGoal();
+    sound.playCheer();
+    sound.playFootballCrowd();
     particles.spawnExplosion(this.ball.x, this.ball.y, scorer === 1 ? '#0ea5e9' : '#f43f5e', 35);
     particles.shake(14, 20);
 
@@ -217,7 +223,7 @@ export class MicroSoccer {
       } else {
         this.resetRound();
       }
-    }, 1800);
+    }, 2000);
   }
 
   computeBotInput() {

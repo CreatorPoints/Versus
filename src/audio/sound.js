@@ -1,6 +1,6 @@
 /**
- * VERSUS - Procedural Web Audio Sound Engine
- * Zero external audio assets required, instantaneous playback, zero latency.
+ * VERSUS - Audio Engine with SFX Folder Support & Procedural Synthesizer Fallbacks
+ * Supports custom audio files (football crowd, ball kicks, bounces, cheer, win) with zero latency.
  */
 
 class SoundEngine {
@@ -8,6 +8,19 @@ class SoundEngine {
     this.ctx = null;
     this.muted = localStorage.getItem('versus_muted') === 'true';
     this.masterGain = null;
+    this.buffers = new Map();
+    this.currentCrowdSource = null;
+
+    this.sfxFiles = {
+      'crowd': '/sfx/football-ambience.mp3',
+      'kick': '/sfx/ball-kick.mp3',
+      'bounce': '/sfx/ball-bounce.mp3',
+      'cheer': '/sfx/cheer.mp3',
+      'win': '/sfx/win.mp3'
+    };
+
+    // Preload audio files as soon as user first interacts
+    this.preloaded = false;
   }
 
   init() {
@@ -16,20 +29,86 @@ class SoundEngine {
       if (AudioContext) {
         this.ctx = new AudioContext();
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.value = this.muted ? 0 : 0.28;
+        this.masterGain.gain.value = this.muted ? 0 : 0.35;
         this.masterGain.connect(this.ctx.destination);
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
+    if (!this.preloaded && this.ctx) {
+      this.preloadSamples();
+    }
+  }
+
+  async preloadSamples() {
+    this.preloaded = true;
+    for (const key of Object.keys(this.sfxFiles)) {
+      this.loadAudioBuffer(key).catch(() => {});
+    }
+  }
+
+  async loadAudioBuffer(key) {
+    const url = this.sfxFiles[key];
+    if (!url) return null;
+    if (this.buffers.has(key)) return this.buffers.get(key);
+
+    this.init();
+    if (!this.ctx) return null;
+
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const arrayBuf = await resp.arrayBuffer();
+      const audioBuf = await this.ctx.decodeAudioData(arrayBuf);
+      this.buffers.set(key, audioBuf);
+      return audioBuf;
+    } catch (e) {
+      console.warn(`SFX buffer load fallback for [${key}]:`, e.message);
+      return null;
+    }
+  }
+
+  async playSample(key, { volume = 1, maxDuration = null, fadeOut = false } = {}) {
+    if (this.muted) return null;
+    this.init();
+    if (!this.ctx) return null;
+
+    let buf = this.buffers.get(key);
+    if (!buf) {
+      buf = await this.loadAudioBuffer(key);
+    }
+    if (!buf) return null;
+
+    const source = this.ctx.createBufferSource();
+    source.buffer = buf;
+
+    const gain = this.ctx.createGain();
+    gain.gain.value = volume;
+
+    source.connect(gain);
+    gain.connect(this.masterGain);
+
+    const now = this.ctx.currentTime;
+    source.start(now);
+
+    if (maxDuration) {
+      if (fadeOut) {
+        const fadeStart = Math.max(0, maxDuration - 0.8);
+        gain.gain.setValueAtTime(volume, now + fadeStart);
+        gain.gain.linearRampToValueAtTime(0.001, now + maxDuration);
+      }
+      source.stop(now + maxDuration);
+    }
+
+    return source;
   }
 
   toggleMute() {
     this.muted = !this.muted;
     localStorage.setItem('versus_muted', this.muted);
     if (this.masterGain) {
-      this.masterGain.gain.value = this.muted ? 0 : 0.28;
+      this.masterGain.gain.value = this.muted ? 0 : 0.35;
     }
     return this.muted;
   }
@@ -39,12 +118,69 @@ class SoundEngine {
       try {
         navigator.vibrate(pattern);
       } catch (e) {
-        // ignore vibrate restrictions
+        // ignore
       }
     }
   }
 
-  // --- Sound Effects ---
+  // --- Specific SFX ---
+
+  /**
+   * Play Football Crowd / Ambience for only the first 6 seconds
+   */
+  async playFootballCrowd() {
+    if (this.muted) return;
+    if (this.currentCrowdSource) {
+      try { this.currentCrowdSource.stop(); } catch (e) {}
+      this.currentCrowdSource = null;
+    }
+
+    this.currentCrowdSource = await this.playSample('crowd', {
+      volume: 0.85,
+      maxDuration: 6.0, // Exactly first 6 seconds
+      fadeOut: true     // Smooth fade out at the end of 6 seconds
+    });
+  }
+
+  playBallKick() {
+    this.playSample('kick', { volume: 0.9 }).then((src) => {
+      if (!src) {
+        // Procedural fallback
+        this.playShoot('laser');
+      }
+    });
+    this.vibrate(25);
+  }
+
+  playBallBounce(high = false) {
+    this.playSample('bounce', { volume: 0.85 }).then((src) => {
+      if (!src) {
+        // Procedural fallback
+        this.playBounce(high);
+      }
+    });
+  }
+
+  playCheer() {
+    this.playSample('cheer', { volume: 0.9 }).then((src) => {
+      if (!src) {
+        this.playGoal();
+      }
+    });
+    this.vibrate([60, 40, 100]);
+  }
+
+  playVictory() {
+    if (this.muted) return;
+    this.playSample('win', { volume: 0.95 }).then((src) => {
+      if (!src) {
+        this.playProceduralVictory();
+      }
+    });
+    this.vibrate([100, 50, 100, 50, 200]);
+  }
+
+  // --- Procedural Fallbacks & Synthesizer SFX ---
 
   playShoot(type = 'laser') {
     if (this.muted) return;
@@ -128,7 +264,6 @@ class SoundEngine {
     if (!this.ctx) return;
 
     const t = this.ctx.currentTime;
-    // White noise buffer
     const bufferSize = this.ctx.sampleRate * 0.4;
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
@@ -159,28 +294,7 @@ class SoundEngine {
 
   playGoal() {
     if (this.muted) return;
-    this.init();
-    if (!this.ctx) return;
-
-    const chords = [440, 554.37, 659.25, 880];
-    chords.forEach((freq, idx) => {
-      const t = this.ctx.currentTime + idx * 0.08;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(freq, t);
-
-      gain.gain.setValueAtTime(0.2, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
-
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-
-      osc.start(t);
-      osc.stop(t + 0.45);
-    });
-    this.vibrate([50, 40, 100]);
+    this.playCheer();
   }
 
   playCountdown(pitch = 440) {
@@ -340,12 +454,12 @@ class SoundEngine {
     osc.stop(t + 0.03);
   }
 
-  playVictory() {
+  playProceduralVictory() {
     if (this.muted) return;
     this.init();
     if (!this.ctx) return;
 
-    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+    const notes = [523.25, 659.25, 783.99, 1046.5];
     notes.forEach((freq, i) => {
       const t = this.ctx.currentTime + i * 0.12;
       const osc = this.ctx.createOscillator();
@@ -363,7 +477,6 @@ class SoundEngine {
       osc.start(t);
       osc.stop(t + (i === 3 ? 0.8 : 0.25));
     });
-    this.vibrate([100, 50, 100, 50, 200]);
   }
 }
 
