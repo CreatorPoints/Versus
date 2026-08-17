@@ -217,16 +217,24 @@ export class ChessGame {
     }
 
     const cols = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-    const san = `${piece.toUpperCase() !== 'P' ? piece.toUpperCase() : ''}${cols[fromCol]}${8 - fromRow}➔${cols[toCol]}${8 - toRow}`;
+    const isPawn = piece.toUpperCase() === 'P';
+    const pieceLetter = isPawn ? '' : piece.toUpperCase();
+    const targetCoord = `${cols[toCol]}${8 - toRow}`;
+    let san = '';
 
-    this.moveHistory.push({
-      player: this.turn,
-      san,
-      classification,
-      cpl,
-      from: { row: fromRow, col: fromCol },
-      to: { row: toRow, col: toCol }
-    });
+    if (isPawn) {
+      if (captured) {
+        san = `${cols[fromCol]}x${targetCoord}`;
+      } else {
+        san = targetCoord;
+      }
+    } else {
+      if (captured) {
+        san = `${pieceLetter}x${targetCoord}`;
+      } else {
+        san = `${pieceLetter}${targetCoord}`;
+      }
+    }
 
     this.lastMove = {
       from: { row: fromRow, col: fromCol },
@@ -259,11 +267,28 @@ export class ChessGame {
 
     this.turn = this.turn === 'white' ? 'black' : 'white';
     const isNowInCheck = this.isKingInCheck(this.board, this.turn);
+    const allOpponentStrictMoves = this.getAllStrictLegalMoves(this.board, this.turn);
+    const isMate = allOpponentStrictMoves.length === 0 && isNowInCheck;
+
+    if (isMate) {
+      san += '#';
+    } else if (isNowInCheck) {
+      san += '+';
+    }
+
+    this.moveHistory.push({
+      player: isWhite ? 'white' : 'black',
+      san,
+      classification,
+      cpl,
+      from: { row: fromRow, col: fromCol },
+      to: { row: toRow, col: toCol }
+    });
+
     const checkText = isNowInCheck ? ' (+ CHECK!)' : '';
     this.statusText = this.turn === 'white' ? `WHITE'S TURN (P1)${checkText}` : `BLACK'S TURN [ELO: ${this.botElo}]${checkText}`;
 
     // 5. Check for Checkmate or Stalemate
-    const allOpponentStrictMoves = this.getAllStrictLegalMoves(this.board, this.turn);
     if (allOpponentStrictMoves.length === 0) {
       if (isNowInCheck) {
         this.finishGame(this.turn === 'white' ? 2 : 1, 'Checkmate');
@@ -429,14 +454,32 @@ export class ChessGame {
       blunder: countClass(p2Moves, 'blunder')
     };
 
-    const calcAcc = (stats, total) => {
-      if (!total) return 85.0;
-      const penalty = (stats.blunder * 18 + stats.mistake * 8 + stats.inaccuracy * 3.5) / total;
-      return Math.max(30.0, Math.min(99.4, +(96.0 - penalty * 12).toFixed(1)));
+    // Exponential ACPL + Move-Weight Accuracy Formula (Lichess/Chess.com standard)
+    const calcAcc = (stats, moves) => {
+      if (!moves || moves.length === 0) return 85.0;
+
+      // 1. Average Centipawn Loss (ACPL)
+      const totalCPL = moves.reduce((sum, m) => sum + (m.cpl || 0), 0);
+      const acpl = totalCPL / moves.length;
+      const acplAcc = 100 * Math.exp(-0.0035 * acpl);
+
+      // 2. Move Classification Quality Score
+      let qualityScore = 0;
+      for (const m of moves) {
+        if (m.classification === 'brilliant' || m.classification === 'great' || m.classification === 'best') qualityScore += 100;
+        else if (m.classification === 'inaccuracy') qualityScore += 72;
+        else if (m.classification === 'mistake') qualityScore += 38;
+        else if (m.classification === 'blunder') qualityScore += 5;
+      }
+      const classAcc = qualityScore / moves.length;
+
+      // 3. Blend 60% ACPL + 40% Move Classifications (Continuous without flat-line clamp)
+      const blended = (acplAcc * 0.6) + (classAcc * 0.4);
+      return Math.max(5.0, Math.min(99.4, +blended.toFixed(1)));
     };
 
-    const p1Acc = calcAcc(p1Stats, p1Moves.length);
-    const p2Acc = calcAcc(p2Stats, p2Moves.length);
+    const p1Acc = calcAcc(p1Stats, p1Moves);
+    const p2Acc = calcAcc(p2Stats, p2Moves);
 
     const p1Perf = Math.round(this.botElo * (p1Acc / 100) + (winner === 1 ? 250 : -150));
     const p2Perf = Math.round(this.p1Elo * (p2Acc / 100) + (winner === 2 ? 250 : -150));
