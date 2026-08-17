@@ -1,17 +1,18 @@
 /**
  * VERSUS - Glow Air Hockey Mini-Game
- * Fluid Mouse Tracking + Keyboard (WASD / Arrows) + Touch, Power Smash, AI Difficulties!
+ * Fluid Mouse Tracking + Keyboard + Touch, Power Smash, AI Difficulties!
  */
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 import { input } from '../engine/input.js';
 
 export class GlowHockey {
-  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal', onRoundReset = null) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
     this.difficulty = difficulty;
+    this.onRoundReset = onRoundReset;
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -68,6 +69,7 @@ export class GlowHockey {
     };
 
     this.roundEnding = false;
+    if (this.onRoundReset) this.onRoundReset();
   }
 
   update(p1Input, p2Input, isBotP2 = false) {
@@ -90,7 +92,6 @@ export class GlowHockey {
       this.puck.trail.push({ x: this.puck.x, y: this.puck.y });
       if (this.puck.trail.length > 8) this.puck.trail.shift();
 
-      // Top & bottom wall bounces
       if (this.puck.y - this.puck.radius <= 12) {
         this.puck.y = 12 + this.puck.radius;
         this.puck.vy *= -1;
@@ -103,7 +104,6 @@ export class GlowHockey {
         particles.spawnSparks(this.puck.x, this.puck.y, '#f59e0b', 5);
       }
 
-      // Left goal & side walls
       if (this.puck.x - this.puck.radius <= 14) {
         if (this.puck.y >= this.goalY && this.puck.y <= this.goalY + this.goalSize) {
           this.scoreGoal(2);
@@ -115,7 +115,6 @@ export class GlowHockey {
         }
       }
 
-      // Right goal & side walls
       if (this.puck.x + this.puck.radius >= this.width - 14) {
         if (this.puck.y >= this.goalY && this.puck.y <= this.goalY + this.goalSize) {
           this.scoreGoal(1);
@@ -140,13 +139,11 @@ export class GlowHockey {
     const isMouseRecent = (performance.now() - input.mouse.lastMoveTime) < 3000;
 
     if (hasKeyboardMove || !isMouseRecent) {
-      // Keyboard / Gamepad movement
       this.p1.vx = p1Input.x * this.p1.speed;
       this.p1.vy = p1Input.y * this.p1.speed;
       this.p1.x += this.p1.vx;
       this.p1.y += this.p1.vy;
     } else {
-      // Direct high-precision Mouse tracking
       const targetX = Math.max(minX + this.p1.radius, Math.min(maxX - this.p1.radius, input.mouse.canvasX));
       const targetY = Math.max(14 + this.p1.radius, Math.min(this.height - 14 - this.p1.radius, input.mouse.canvasY));
       
@@ -159,7 +156,6 @@ export class GlowHockey {
     this.p1.x = Math.max(minX + this.p1.radius, Math.min(maxX - this.p1.radius, this.p1.x));
     this.p1.y = Math.max(14 + this.p1.radius, Math.min(this.height - 14 - this.p1.radius, this.p1.y));
 
-    // Action / Charge
     if (p1Input.action || input.mouse.down) {
       this.p1.charge = Math.min(this.p1.charge + 0.05, 1);
       this.p1.isCharging = true;

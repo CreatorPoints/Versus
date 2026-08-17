@@ -6,11 +6,12 @@ import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 
 export class PinballDuel {
-  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal', onRoundReset = null) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
     this.difficulty = difficulty;
+    this.onRoundReset = onRoundReset;
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -64,6 +65,7 @@ export class PinballDuel {
     };
 
     this.roundEnding = false;
+    if (this.onRoundReset) this.onRoundReset();
   }
 
   update(p1Input, p2Input, isBotP2 = false) {
@@ -179,7 +181,6 @@ export class PinballDuel {
       if (targetY < this.p2.y - 12) moveY = -1;
       if (targetY > this.p2.y + 12) moveY = 1;
     } else {
-      // Hard & Demon predictive tracking
       const leadY = this.ball.y + this.ball.vy * 5;
       if (leadY < this.p2.y - 5) moveY = -1;
       if (leadY > this.p2.y + 5) moveY = 1;

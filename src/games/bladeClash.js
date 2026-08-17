@@ -6,11 +6,12 @@ import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 
 export class BladeClash {
-  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal', onRoundReset = null) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
     this.difficulty = difficulty;
+    this.onRoundReset = onRoundReset;
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -63,6 +64,7 @@ export class BladeClash {
     };
 
     this.roundEnding = false;
+    if (this.onRoundReset) this.onRoundReset();
   }
 
   update(p1Input, p2Input, isBotP2 = false) {
@@ -248,14 +250,13 @@ export class BladeClash {
     } else if (this.difficulty === 'hard') {
       if (this.p1.state === 'ATTACK' && dist < 130 && Math.random() < 0.75) {
         action = true;
-        down = true; // High skill parry
+        down = true;
       } else if (dist > 80) {
         moveX = this.p1.x > this.p2.x ? 1 : -1;
       } else {
         action = Math.random() < 0.5;
       }
     } else if (this.difficulty === 'demon') {
-      // Demon frame-perfect parry & instantaneous counter-attack
       if (this.p1.state === 'ATTACK' && dist < 140) {
         action = true;
         down = true;

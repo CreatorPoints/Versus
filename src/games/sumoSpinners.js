@@ -6,11 +6,12 @@ import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 
 export class SumoSpinners {
-  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal', onRoundReset = null) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
     this.difficulty = difficulty;
+    this.onRoundReset = onRoundReset;
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -60,6 +61,7 @@ export class SumoSpinners {
     };
 
     this.roundEnding = false;
+    if (this.onRoundReset) this.onRoundReset();
   }
 
   update(p1Input, p2Input, isBotP2 = false) {
@@ -195,7 +197,6 @@ export class SumoSpinners {
     const distToCenter = Math.hypot(this.p2.x - this.centerX, this.p2.y - this.centerY);
     
     if (this.difficulty === 'baby') {
-      // Wanders around aimlessly
       return {
         x: (Math.random() - 0.5) * 2,
         y: (Math.random() - 0.5) * 2,

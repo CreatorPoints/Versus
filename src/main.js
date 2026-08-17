@@ -1,11 +1,12 @@
 /**
  * VERSUS - High-Performance Game Application Controller
- * Optimized 60-120 FPS Loop, High-DPI Scaling, Dynamic Lazy Imports, Zero Idle Overhead.
+ * Dynamic Countdown Engine, 60-120 FPS Loop, High-DPI Scaling, Lazy Imports.
  */
 import { sound } from './audio/sound.js';
 import { input } from './engine/input.js';
 import { particles } from './engine/particles.js';
 import { network } from './engine/network.js';
+import { countdown } from './engine/countdown.js';
 
 // Games
 import { TankBattle } from './games/tankBattle.js';
@@ -46,8 +47,8 @@ class App {
       { 
         key: 'hockey', 
         name: 'Glow Hockey', 
-        tag: 'Smash Charge',
-        desc: 'Fast-paced arcade air hockey! Deflect the puck, charge up your power smash shot, and blast goals into the opponent net.',
+        tag: 'Mouse / Keys',
+        desc: 'Fast-paced arcade air hockey! Move paddle directly with Mouse or WASD, charge power smash shots, and blast goals into the opponent net.',
         class: GlowHockey 
       },
       { 
@@ -104,11 +105,8 @@ class App {
   }
 
   setupCanvasDPI() {
-    // Sharp high-DPI scaling
-    const baseW = 800;
-    const baseH = 500;
-    this.canvas.width = baseW;
-    this.canvas.height = baseH;
+    this.canvas.width = 800;
+    this.canvas.height = 500;
   }
 
   initTheme() {
@@ -141,19 +139,16 @@ class App {
   }
 
   initUI() {
-    // Quick Theme Toggle
     document.getElementById('btnQuickTheme').addEventListener('click', () => {
       sound.playClick();
       this.setTheme(this.theme === 'dark' ? 'light' : 'dark');
     });
 
-    // Sound Quick Toggle
     document.getElementById('btnSoundToggle').addEventListener('click', () => {
       const isMuted = sound.toggleMute();
       this.updateSoundUI(isMuted);
     });
 
-    // Settings Modal
     document.getElementById('btnOpenSettings').addEventListener('click', () => {
       sound.playClick();
       document.getElementById('settingsModal').classList.remove('hidden');
@@ -186,7 +181,6 @@ class App {
       document.getElementById('wipModal').classList.add('hidden');
     });
 
-    // Game Picker Cards (Event Delegation for faster performance)
     const pickerGrid = document.getElementById('gamePickerGrid');
     pickerGrid.addEventListener('click', (e) => {
       const card = e.target.closest('.game-card');
@@ -197,7 +191,6 @@ class App {
       this.selectGame(card.dataset.game);
     });
 
-    // Mode Selection Pills
     const modePillsList = document.querySelector('.mode-pills-list');
     modePillsList.addEventListener('click', (e) => {
       const pill = e.target.closest('.mode-pill');
@@ -218,7 +211,6 @@ class App {
       aiSec.style.display = mode === 'ai' ? 'flex' : 'none';
     });
 
-    // AI Difficulty Buttons
     const diffGrid = document.querySelector('.difficulty-grid');
     diffGrid.addEventListener('click', (e) => {
       const btn = e.target.closest('.diff-btn');
@@ -229,13 +221,11 @@ class App {
       this.difficulty = btn.dataset.diff;
     });
 
-    // Play Button
     document.getElementById('btnPlayNow').addEventListener('click', () => {
       sound.playClick();
       this.handlePlayAction();
     });
 
-    // Private Room Modal Buttons
     document.getElementById('btnCreateRoom').addEventListener('click', async () => {
       sound.playClick();
       const code = await network.createPrivateRoom();
@@ -269,6 +259,7 @@ class App {
       sound.playClick();
       network.disconnect();
       this.isPlaying = false;
+      countdown.active = false;
       this.showScreen('lobbyScreen');
     });
 
@@ -276,6 +267,7 @@ class App {
       sound.playClick();
       if (this.currentGameInstance) {
         this.currentGameInstance.resetRound();
+        countdown.start();
       }
     });
 
@@ -294,6 +286,7 @@ class App {
       document.getElementById('winnerModal').classList.add('hidden');
       network.disconnect();
       this.isPlaying = false;
+      countdown.active = false;
       this.showScreen('lobbyScreen');
     });
 
@@ -489,15 +482,26 @@ class App {
     particles.clear();
 
     const GameClass = gameDef.class;
-    this.currentGameInstance = new GameClass(this.canvas, this.ctx, (winner, score) => {
-      this.handleGameOver(winner, score);
-    }, this.difficulty);
+    this.currentGameInstance = new GameClass(
+      this.canvas, 
+      this.ctx, 
+      (winner, score) => {
+        this.handleGameOver(winner, score);
+      }, 
+      this.difficulty,
+      () => {
+        // Trigger 3-2-1 countdown on every round reset
+        countdown.start();
+      }
+    );
+
+    // Trigger 3-2-1 countdown on game start
+    countdown.start();
   }
 
   async handleGameOver(winner, score) {
     sound.playVictory();
 
-    // Lazy load confetti module on demand
     try {
       const { default: confetti } = await import('canvas-confetti');
       confetti({
@@ -547,7 +551,6 @@ class App {
 
   startLoop() {
     const loop = () => {
-      // 1. Process active game only when gameScreen is visible (Zero idle CPU drain!)
       if (this.isPlaying && this.currentGameInstance) {
         input.update();
 
@@ -556,16 +559,30 @@ class App {
           network.sendInput(myInput);
         }
 
-        const isBot = this.gameMode === 'ai' || this.gameMode === 'tournament';
-        this.currentGameInstance.update(input.p1, input.p2, isBot);
+        // 1. Process countdown if active
+        if (countdown.active) {
+          countdown.update();
+        } else {
+          // 2. Normal active game updates
+          const isBot = this.gameMode === 'ai' || this.gameMode === 'tournament';
+          this.currentGameInstance.update(input.p1, input.p2, isBot);
+        }
+
         particles.update();
 
+        // 3. Render Canvas
         this.ctx.save();
         if (particles.shakeOffset.x !== 0 || particles.shakeOffset.y !== 0) {
           this.ctx.translate(particles.shakeOffset.x, particles.shakeOffset.y);
         }
         this.currentGameInstance.draw();
         particles.draw(this.ctx);
+
+        // 4. Render Countdown Overlay on top
+        if (countdown.active) {
+          countdown.draw(this.ctx, this.canvas.width, this.canvas.height);
+        }
+
         this.ctx.restore();
       }
 

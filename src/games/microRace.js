@@ -6,11 +6,12 @@ import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 
 export class MicroRace {
-  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal', onRoundReset = null) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
     this.difficulty = difficulty;
+    this.onRoundReset = onRoundReset;
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -56,6 +57,7 @@ export class MicroRace {
     };
 
     this.roundEnding = false;
+    if (this.onRoundReset) this.onRoundReset();
   }
 
   update(p1Input, p2Input, isBotP2 = false) {
@@ -126,7 +128,6 @@ export class MicroRace {
     ];
 
     if (this.difficulty === 'demon' || this.difficulty === 'hard') {
-      // Optimal apex curves
       waypoints = [
         { x: 80, y: this.height - 85 },
         { x: 75, y: 85 },

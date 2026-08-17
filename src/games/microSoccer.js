@@ -6,11 +6,12 @@ import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 
 export class MicroSoccer {
-  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal', onRoundReset = null) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
     this.difficulty = difficulty;
+    this.onRoundReset = onRoundReset;
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -74,6 +75,7 @@ export class MicroSoccer {
     };
 
     this.roundEnding = false;
+    if (this.onRoundReset) this.onRoundReset();
   }
 
   update(p1Input, p2Input, isBotP2 = false) {
@@ -244,7 +246,6 @@ export class MicroSoccer {
         action = true;
       }
     } else if (this.difficulty === 'demon') {
-      // Intercept aerial trajectory & bicycle kick with extreme aggression
       const targetX = this.ball.x + this.ball.vx * 4;
       moveX = targetX > this.p2.x ? 1 : -1;
       if (Math.abs(this.ball.x - this.p2.x) < 80 && this.ball.y < this.p2.y) {

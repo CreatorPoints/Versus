@@ -6,11 +6,12 @@ import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 
 export class TankBattle {
-  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal', onRoundReset = null) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
-    this.difficulty = difficulty; // 'baby' | 'normal' | 'hard' | 'demon'
+    this.difficulty = difficulty;
+    this.onRoundReset = onRoundReset;
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -67,6 +68,7 @@ export class TankBattle {
     };
 
     this.roundEnding = false;
+    if (this.onRoundReset) this.onRoundReset();
   }
 
   update(p1Input, p2Input, isBotP2 = false) {
@@ -274,7 +276,6 @@ export class TankBattle {
     let targetY = this.p1.y;
 
     if (this.difficulty === 'hard' || this.difficulty === 'demon') {
-      // Lead target with velocity
       targetX += (this.p1.x - 80) * 0.15;
       targetY += (this.p1.y - this.height / 2) * 0.15;
     }
@@ -302,7 +303,6 @@ export class TankBattle {
       shouldShoot = dist < 500 && (aimDiff < 0.18 || Math.random() < 0.4);
     }
 
-    // Bullet dodging
     if (this.difficulty !== 'baby') {
       const dodgeThreshold = this.difficulty === 'demon' ? 180 : this.difficulty === 'hard' ? 130 : 90;
       for (const b of this.bullets) {
