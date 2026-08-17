@@ -15,6 +15,9 @@ import { QuickDraw } from './games/quickDraw.js';
 import { MicroSoccer } from './games/microSoccer.js';
 import { MicroRace } from './games/microRace.js';
 import { PinballDuel } from './games/pinballDuel.js';
+import { TicTacToe } from './games/ticTacToe.js';
+import { ChessGame } from './games/chessGame.js';
+import { HotPotato } from './games/hotPotato.js';
 
 class App {
   constructor() {
@@ -44,14 +47,14 @@ class App {
       },
       { 
         key: 'sumo', 
-        name: 'SPinner war', 
+        name: 'Spinner War', 
         tag: 'Ring Out!',
         desc: 'Clash in a crumbling hexagon arena where edge tiles fall into the abyss over time! Boost-ram your opponent off the edge.',
         class: SumoSpinners 
       },
       { 
         key: 'draw', 
-        name: 'quick shot', 
+        name: 'Quick Shot', 
         tag: 'Reflex Duel',
         desc: 'Wild West reaction shootout! Wait for the official "FIRE!" cue without misfiring early, and strike with lightning reflexes.',
         class: QuickDraw 
@@ -65,7 +68,7 @@ class App {
       },
       { 
         key: 'race', 
-        name: 'RACE', 
+        name: 'Race Cars', 
         tag: 'Variable Maps',
         desc: 'Top-down arcade kart grand prix with variable tracks (Speedway, Cyber GP, Desert Oval)! Drift tight around curves and conquer 3 full laps.',
         class: MicroRace 
@@ -76,6 +79,27 @@ class App {
         tag: 'Bumper Bounce',
         desc: 'Dual-paddle pinball table with high-impulse bumpers in the center! Angle your deflection shots to slip past the opponent.',
         class: PinballDuel 
+      },
+      {
+        key: 'tictactoe',
+        name: 'Tic Tac Toe',
+        tag: 'Classic Duel',
+        desc: 'Fast neon 3x3 strategy! Connect 3 in a row, block opponent streaks, and test your tactics against Minimax AI.',
+        class: TicTacToe
+      },
+      {
+        key: 'chess',
+        name: 'Chess',
+        tag: 'Elo Ranked AI',
+        desc: 'Grandmaster strategy duel! Face AI bots ranked from 400 Elo (Baby) to 2400+ Elo (Demon Alpha-Beta Master).',
+        class: ChessGame
+      },
+      {
+        key: 'hotpotato',
+        name: 'Hot Potato',
+        tag: 'Explosive Tag',
+        desc: 'Frantic bomb-passing arena showdown! Tag your opponent before the ticking fuse reaches zero and detonates!',
+        class: HotPotato
       }
     ];
 
