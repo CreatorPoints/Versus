@@ -191,7 +191,7 @@ class SoundEngine {
   }
 
   playCheer() {
-    this.playSample('cheer', { volume: 0.9 }).then((src) => {
+    this.playSample('cheer', { volume: 2.2 }).then((src) => {
       if (!src) {
         this.playGoal();
       }

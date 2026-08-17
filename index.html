@@ -20,6 +20,39 @@
     <div class="fun-bubble bubble-1"></div>
     <div class="fun-bubble bubble-2"></div>
 
+    <!-- Lil Fun Loading Screen Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+      <div class="loading-content">
+        <div class="loading-avatar-duel">
+          <div class="mini-avatar p1-mini">
+            <svg width="42" height="42" viewBox="0 0 100 100" fill="none">
+              <circle cx="50" cy="50" r="45" fill="#0ea5e9"/>
+              <circle cx="36" cy="42" r="7" fill="#ffffff"/>
+              <circle cx="64" cy="42" r="7" fill="#ffffff"/>
+              <path d="M36 64 Q 50 78 64 64" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="loading-vs-badge">VS</div>
+          <div class="mini-avatar p2-mini">
+            <svg width="42" height="42" viewBox="0 0 100 100" fill="none">
+              <circle cx="50" cy="50" r="45" fill="#f43f5e"/>
+              <circle cx="36" cy="42" r="7" fill="#ffffff"/>
+              <circle cx="64" cy="42" r="7" fill="#ffffff"/>
+              <path d="M36 64 Q 50 78 64 64" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="loading-spinner-dots">
+          <span class="dot d1"></span>
+          <span class="dot d2"></span>
+          <span class="dot d3"></span>
+        </div>
+
+        <p id="loadingTipText" class="loading-tip-text">Warming up the arena referee...</p>
+      </div>
+    </div>
+
     <!-- 1. LOBBY VIEW (Game Grid on Left, Animated Detail Panel on Right) -->
     <main id="lobbyScreen" class="view-screen">
       <div class="lobby-layout">

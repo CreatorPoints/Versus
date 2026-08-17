@@ -102,6 +102,39 @@ class App {
     this.selectGame('tank');
     this.setupCanvasDPI();
     this.startLoop();
+    
+    // Fun initial splash loading screen
+    this.showLoading("Loading VERSUS Party Games...", 550);
+  }
+
+  showLoading(customMessage = null, duration = 400, onDone = null) {
+    const overlay = document.getElementById('loadingOverlay');
+    const tipText = document.getElementById('loadingTipText');
+    if (!overlay) {
+      if (onDone) onDone();
+      return;
+    }
+
+    const tips = [
+      "🏆 Polishing the championship trophy...",
+      "⚽ Inflating the capsule soccer ball...",
+      "🏎️ Tuning up the turbo drift engines...",
+      "🛡️ Loading bouncy tank armor shells...",
+      "🤠 Calibrating high-noon reflex timers...",
+      "🏒 Waxing the glow hockey ice rink...",
+      "⚔️ Sharpening plasma laser katanas...",
+      "🎯 Installing high-impulse pinball bumpers...",
+      "🎮 Syncing controller inputs & joysticks...",
+      "🤖 Preparing smart AI challengers..."
+    ];
+
+    tipText.textContent = customMessage || tips[Math.floor(Math.random() * tips.length)];
+    overlay.classList.remove('hidden');
+
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      if (onDone) onDone();
+    }, duration);
   }
 
   setupCanvasDPI() {
@@ -223,7 +256,9 @@ class App {
 
     document.getElementById('btnPlayNow').addEventListener('click', () => {
       sound.playClick();
-      this.handlePlayAction();
+      this.showLoading(null, 320, () => {
+        this.handlePlayAction();
+      });
     });
 
     document.getElementById('btnCreateRoom').addEventListener('click', async () => {
@@ -258,10 +293,12 @@ class App {
     document.getElementById('btnExitGame').addEventListener('click', () => {
       sound.playClick();
       sound.stopFootballCrowd();
-      network.disconnect();
-      this.isPlaying = false;
-      countdown.active = false;
-      this.showScreen('lobbyScreen');
+      this.showLoading("Returning to game lobby...", 400, () => {
+        network.disconnect();
+        this.isPlaying = false;
+        countdown.active = false;
+        this.showScreen('lobbyScreen');
+      });
     });
 
     document.getElementById('btnRestartRound').addEventListener('click', () => {
@@ -286,10 +323,12 @@ class App {
       sound.playClick();
       sound.stopFootballCrowd();
       document.getElementById('winnerModal').classList.add('hidden');
-      network.disconnect();
-      this.isPlaying = false;
-      countdown.active = false;
-      this.showScreen('lobbyScreen');
+      this.showLoading("Returning to game lobby...", 400, () => {
+        network.disconnect();
+        this.isPlaying = false;
+        countdown.active = false;
+        this.showScreen('lobbyScreen');
+      });
     });
 
     if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
