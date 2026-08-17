@@ -1,6 +1,6 @@
 /**
  * VERSUS - Tank Battle Mini-Game
- * Bouncing bullets, destructible obstacles, tank treads, power-ups, intense arena warfare!
+ * Bouncing bullets, destructible obstacles, tank treads, power-ups!
  */
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
@@ -31,42 +31,35 @@ export class TankBattle {
       { x: this.width * 0.25, y: this.height * 0.75 - 40, w: 40, h: 40, hp: 3, maxHp: 3 },
       { x: this.width * 0.75 - 40, y: this.height * 0.75 - 40, w: 40, h: 40, hp: 3, maxHp: 3 },
       { x: this.width * 0.5 - 25, y: this.height * 0.5 - 25, w: 50, h: 50, hp: 4, maxHp: 4 },
-      // Steel non-destructible pillars
       { x: this.width * 0.5 - 20, y: this.height * 0.15, w: 40, h: 40, steel: true },
       { x: this.width * 0.5 - 20, y: this.height * 0.85 - 40, w: 40, h: 40, steel: true }
     ];
 
-    // Player 1 (Blue)
     this.p1 = {
       x: 80,
       y: this.height / 2,
       angle: 0,
       speed: 0,
-      maxSpeed: 3.2,
+      maxSpeed: 3.4,
       size: 22,
-      color: '#00f0ff',
+      color: '#0ea5e9',
       ammo: 5,
       maxAmmo: 5,
       reloadTime: 0,
-      shield: 0,
-      tripleShot: 0,
       alive: true
     };
 
-    // Player 2 (Red)
     this.p2 = {
       x: this.width - 80,
       y: this.height / 2,
       angle: Math.PI,
       speed: 0,
-      maxSpeed: 3.2,
+      maxSpeed: 3.4,
       size: 22,
-      color: '#ff2e63',
+      color: '#f43f5e',
       ammo: 5,
       maxAmmo: 5,
       reloadTime: 0,
-      shield: 0,
-      tripleShot: 0,
       alive: true
     };
 
@@ -76,42 +69,36 @@ export class TankBattle {
   update(p1Input, p2Input, isBotP2 = false) {
     if (this.isOver) return;
 
-    // 1. Bot AI for P2
     if (isBotP2 && this.p2.alive && this.p1.alive) {
       p2Input = this.computeBotInput();
     }
 
-    // 2. Update Players
-    this.updateTank(this.p1, p1Input, '#00f0ff');
-    this.updateTank(this.p2, p2Input, '#ff2e63');
+    this.updateTank(this.p1, p1Input, '#0ea5e9');
+    this.updateTank(this.p2, p2Input, '#f43f5e');
 
-    // 3. Update Bullets
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const b = this.bullets[i];
       b.x += b.vx;
       b.y += b.vy;
       b.life--;
 
-      // Bullet trail
       if (Math.random() < 0.4) {
-        particles.spawnTrail(b.x, b.y, b.owner === 1 ? 'rgba(0, 240, 255, 0.5)' : 'rgba(255, 46, 99, 0.5)', 2.5);
+        particles.spawnTrail(b.x, b.y, b.owner === 1 ? 'rgba(14, 165, 233, 0.4)' : 'rgba(244, 63, 94, 0.4)', 2.5);
       }
 
-      // Wall Ricochets
-      if (b.x <= 10 || b.x >= this.width - 10) {
+      if (b.x <= 14 || b.x >= this.width - 14) {
         b.vx *= -1;
         b.bounces++;
         sound.playBounce(true);
-        particles.spawnSparks(b.x, b.y, '#ffffff', 4);
+        particles.spawnSparks(b.x, b.y, '#f59e0b', 5);
       }
-      if (b.y <= 10 || b.y >= this.height - 10) {
+      if (b.y <= 14 || b.y >= this.height - 14) {
         b.vy *= -1;
         b.bounces++;
         sound.playBounce(true);
-        particles.spawnSparks(b.x, b.y, '#ffffff', 4);
+        particles.spawnSparks(b.x, b.y, '#f59e0b', 5);
       }
 
-      // Obstacle collisions
       for (let j = this.obstacles.length - 1; j >= 0; j--) {
         const obs = this.obstacles[j];
         if (
@@ -124,12 +111,12 @@ export class TankBattle {
           b.vx *= -1;
           b.vy *= -1;
           sound.playBounce(true);
-          particles.spawnSparks(b.x, b.y, '#ffd166', 6);
+          particles.spawnSparks(b.x, b.y, '#f59e0b', 6);
 
           if (!obs.steel) {
             obs.hp--;
             if (obs.hp <= 0) {
-              particles.spawnExplosion(obs.x + obs.w / 2, obs.y + obs.h / 2, '#ffd166', 15);
+              particles.spawnExplosion(obs.x + obs.w / 2, obs.y + obs.h / 2, '#f59e0b', 16);
               sound.playExplosion();
               this.obstacles.splice(j, 1);
             }
@@ -138,7 +125,6 @@ export class TankBattle {
         }
       }
 
-      // Player 1 Hit
       if (this.p1.alive && Math.hypot(b.x - this.p1.x, b.y - this.p1.y) < this.p1.size + 4) {
         if (b.owner !== 1 || b.bounces > 0) {
           this.destroyTank(1);
@@ -147,7 +133,6 @@ export class TankBattle {
         }
       }
 
-      // Player 2 Hit
       if (this.p2.alive && Math.hypot(b.x - this.p2.x, b.y - this.p2.y) < this.p2.size + 4) {
         if (b.owner !== 2 || b.bounces > 0) {
           this.destroyTank(2);
@@ -157,12 +142,11 @@ export class TankBattle {
       }
 
       if (b.life <= 0 || b.bounces >= 3) {
-        particles.spawnSparks(b.x, b.y, b.owner === 1 ? '#00f0ff' : '#ff2e63', 6);
+        particles.spawnSparks(b.x, b.y, b.owner === 1 ? '#0ea5e9' : '#f43f5e', 6);
         this.bullets.splice(i, 1);
       }
     }
 
-    // Trim old treadmarks
     if (this.treadMarks.length > 150) {
       this.treadMarks.splice(0, 10);
     }
@@ -179,7 +163,6 @@ export class TankBattle {
 
     if (isMoving) {
       const targetAngle = Math.atan2(moveY, moveX);
-      // Smooth angle interpolation
       let angleDiff = targetAngle - tank.angle;
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
@@ -190,38 +173,33 @@ export class TankBattle {
       const newX = tank.x + Math.cos(tank.angle) * tank.speed;
       const newY = tank.y + Math.sin(tank.angle) * tank.speed;
 
-      // Obstacle & Wall Collision Check
       if (this.canMoveTo(newX, newY, tank.size)) {
         tank.x = newX;
         tank.y = newY;
       }
 
-      // Add tread mark
       if (Math.random() < 0.35) {
         this.treadMarks.push({
           x: tank.x,
           y: tank.y,
           angle: tank.angle,
-          color: 'rgba(255, 255, 255, 0.08)'
+          color: 'rgba(15, 23, 42, 0.08)'
         });
       }
     } else {
       tank.speed *= 0.8;
     }
 
-    // Shooting
     if (input.justAction && tank.reloadTime <= 0) {
-      this.fireBullet(tank, color === '#00f0ff' ? 1 : 2);
-      tank.reloadTime = 22; // cooldown
+      this.fireBullet(tank, color === '#0ea5e9' ? 1 : 2);
+      tank.reloadTime = 22;
     }
   }
 
   canMoveTo(x, y, radius) {
-    // Arena boundaries
     if (x - radius < 14 || x + radius > this.width - 14) return false;
     if (y - radius < 14 || y + radius > this.height - 14) return false;
 
-    // Obstacles
     for (const obs of this.obstacles) {
       if (
         x + radius > obs.x &&
@@ -267,10 +245,10 @@ export class TankBattle {
 
     if (victim === 1) {
       this.p2Score++;
-      particles.addFloatingText('P2 Point!', this.p2.x, this.p2.y - 30, '#ff2e63', 24);
+      particles.addFloatingText('Point Pink!', this.p2.x, this.p2.y - 30, '#f43f5e', 24);
     } else {
       this.p1Score++;
-      particles.addFloatingText('P1 Point!', this.p1.x, this.p1.y - 30, '#00f0ff', 24);
+      particles.addFloatingText('Point Blue!', this.p1.x, this.p1.y - 30, '#0ea5e9', 24);
     }
 
     setTimeout(() => {
@@ -290,11 +268,9 @@ export class TankBattle {
     const dist = Math.hypot(dx, dy);
     const angleToTarget = Math.atan2(dy, dx);
 
-    // Aim toward player 1
     const aimDiff = Math.abs(this.p2.angle - angleToTarget);
-    const shouldShoot = dist < 320 && aimDiff < 0.35 && Math.random() < 0.12;
+    const shouldShoot = dist < 340 && aimDiff < 0.4 && Math.random() < 0.14;
 
-    // Movement: strafe & dodge incoming bullets
     let moveX = Math.cos(angleToTarget);
     let moveY = Math.sin(angleToTarget);
 
@@ -302,7 +278,6 @@ export class TankBattle {
       if (b.owner === 1) {
         const bDist = Math.hypot(b.x - this.p2.x, b.y - this.p2.y);
         if (bDist < 120) {
-          // Dodge perpendicular to bullet trajectory
           moveX = -b.vy;
           moveY = b.vx;
         }
@@ -320,12 +295,12 @@ export class TankBattle {
   draw() {
     this.ctx.save();
 
-    // 1. Arena Floor
-    this.ctx.fillStyle = '#0a0d14';
+    // Floor
+    this.ctx.fillStyle = '#f8fafc';
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Grid Lines
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    // Subtle playful grid
+    this.ctx.strokeStyle = '#e2e8f0';
     this.ctx.lineWidth = 1;
     for (let x = 0; x < this.width; x += 40) {
       this.ctx.beginPath();
@@ -340,12 +315,12 @@ export class TankBattle {
       this.ctx.stroke();
     }
 
-    // Outer Boundary Glowing Wall
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    // Outer Wall
+    this.ctx.strokeStyle = '#cbd5e1';
     this.ctx.lineWidth = 4;
     this.ctx.strokeRect(10, 10, this.width - 20, this.height - 20);
 
-    // 2. Tread marks
+    // Treads
     for (const tm of this.treadMarks) {
       this.ctx.save();
       this.ctx.translate(tm.x, tm.y);
@@ -356,43 +331,44 @@ export class TankBattle {
       this.ctx.restore();
     }
 
-    // 3. Obstacles
+    // Obstacles
     for (const obs of this.obstacles) {
       this.ctx.save();
       if (obs.steel) {
-        this.ctx.fillStyle = '#1e293b';
-        this.ctx.strokeStyle = '#475569';
+        this.ctx.fillStyle = '#334155';
+        this.ctx.strokeStyle = '#1e293b';
         this.ctx.lineWidth = 3;
-        this.ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-        this.ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+        this.ctx.beginPath();
+        this.ctx.roundRect(obs.x, obs.y, obs.w, obs.h, 6);
+        this.ctx.fill();
+        this.ctx.stroke();
       } else {
-        const hpPercent = obs.hp / obs.maxHp;
-        this.ctx.fillStyle = `rgba(245, 158, 11, ${0.4 + hpPercent * 0.4})`;
-        this.ctx.strokeStyle = '#f59e0b';
-        this.ctx.lineWidth = 2;
-        this.ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-        this.ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+        this.ctx.fillStyle = '#f59e0b';
+        this.ctx.strokeStyle = '#d97706';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.roundRect(obs.x, obs.y, obs.w, obs.h, 6);
+        this.ctx.fill();
+        this.ctx.stroke();
       }
       this.ctx.restore();
     }
 
-    // 4. Tanks
+    // Tanks
     if (this.p1.alive) this.drawTank(this.p1);
     if (this.p2.alive) this.drawTank(this.p2);
 
-    // 5. Bullets
+    // Bullets
     for (const b of this.bullets) {
       this.ctx.save();
-      this.ctx.fillStyle = b.owner === 1 ? '#00f0ff' : '#ff2e63';
-      this.ctx.shadowColor = b.owner === 1 ? '#00f0ff' : '#ff2e63';
-      this.ctx.shadowBlur = 8;
+      this.ctx.fillStyle = '#f59e0b';
       this.ctx.beginPath();
-      this.ctx.arc(b.x, b.y, 4.5, 0, Math.PI * 2);
+      this.ctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
       this.ctx.fill();
       this.ctx.restore();
     }
 
-    // 6. Score Header
+    // Score Header
     this.drawScoreHUD();
 
     this.ctx.restore();
@@ -410,24 +386,21 @@ export class TankBattle {
 
     // Body
     this.ctx.fillStyle = tank.color;
-    this.ctx.shadowColor = tank.color;
-    this.ctx.shadowBlur = 10;
     this.ctx.beginPath();
-    this.ctx.roundRect(-tank.size + 4, -tank.size + 6, (tank.size - 4) * 2, (tank.size - 6) * 2, 4);
+    this.ctx.roundRect(-tank.size + 4, -tank.size + 6, (tank.size - 4) * 2, (tank.size - 6) * 2, 6);
     this.ctx.fill();
 
     // Turret Barrel
-    this.ctx.shadowBlur = 0;
-    this.ctx.fillStyle = '#ffffff';
+    this.ctx.fillStyle = '#0f172a';
     this.ctx.fillRect(0, -3.5, tank.size + 8, 7);
 
     // Turret Dome
-    this.ctx.fillStyle = '#0f172a';
+    this.ctx.fillStyle = '#ffffff';
     this.ctx.beginPath();
-    this.ctx.arc(0, 0, 7, 0, Math.PI * 2);
+    this.ctx.arc(0, 0, 8, 0, Math.PI * 2);
     this.ctx.fill();
     this.ctx.strokeStyle = tank.color;
-    this.ctx.lineWidth = 2;
+    this.ctx.lineWidth = 3;
     this.ctx.stroke();
 
     this.ctx.restore();
@@ -435,21 +408,16 @@ export class TankBattle {
 
   drawScoreHUD() {
     this.ctx.save();
-    this.ctx.font = 'bold 22px "Press Start 2P", monospace, sans-serif';
+    this.ctx.font = 'bold 24px "Fredoka", sans-serif';
     this.ctx.textAlign = 'center';
 
-    // P1 Score
-    this.ctx.fillStyle = '#00f0ff';
+    this.ctx.fillStyle = '#0284c7';
     this.ctx.fillText(`${this.p1Score}`, this.width * 0.35, 45);
 
-    // Divider
-    this.ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    this.ctx.font = '16px "Outfit", sans-serif';
-    this.ctx.fillText(`FIRST TO ${this.targetScore}`, this.width * 0.5, 45);
+    this.ctx.fillStyle = '#94a3b8';
+    this.ctx.fillText(`VS`, this.width * 0.5, 45);
 
-    // P2 Score
-    this.ctx.font = 'bold 22px "Press Start 2P", monospace, sans-serif';
-    this.ctx.fillStyle = '#ff2e63';
+    this.ctx.fillStyle = '#e11d48';
     this.ctx.fillText(`${this.p2Score}`, this.width * 0.65, 45);
     this.ctx.restore();
   }

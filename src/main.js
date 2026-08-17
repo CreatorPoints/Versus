@@ -14,6 +14,8 @@ import { SumoSpinners } from './games/sumoSpinners.js';
 import { QuickDraw } from './games/quickDraw.js';
 import { MicroSoccer } from './games/microSoccer.js';
 import { BladeClash } from './games/bladeClash.js';
+import { MicroRace } from './games/microRace.js';
+import { PinballDuel } from './games/pinballDuel.js';
 
 class App {
   constructor() {
@@ -36,7 +38,9 @@ class App {
       { key: 'sumo', name: 'Sumo Spinners', class: SumoSpinners },
       { key: 'draw', name: 'Quick Draw', class: QuickDraw },
       { key: 'soccer', name: 'Micro Soccer', class: MicroSoccer },
-      { key: 'blade', name: 'Blade Clash', class: BladeClash }
+      { key: 'blade', name: 'Blade Clash', class: BladeClash },
+      { key: 'race', name: 'Micro Race', class: MicroRace },
+      { key: 'pinball', name: 'Pinball Duel', class: PinballDuel }
     ];
 
     this.initUI();
@@ -50,7 +54,6 @@ class App {
     const btnSound = document.getElementById('btnToggleSound');
     btnSound.addEventListener('click', () => {
       const isMuted = sound.toggleMute();
-      document.getElementById('soundIcon').textContent = isMuted ? '🔇' : '🔊';
       document.getElementById('soundText').textContent = isMuted ? 'Sound OFF' : 'Sound ON';
     });
 
@@ -64,14 +67,14 @@ class App {
       document.getElementById('guideModal').classList.add('hidden');
     });
 
-    // Game Picker Chips
-    const chips = document.querySelectorAll('.game-chip');
-    chips.forEach((chip) => {
-      chip.addEventListener('click', () => {
+    // Game Picker Cards (4 in a row)
+    const cards = document.querySelectorAll('.game-card');
+    cards.forEach((card) => {
+      card.addEventListener('click', () => {
         sound.playClick();
-        chips.forEach((c) => c.classList.remove('selected'));
-        chip.classList.add('selected');
-        this.currentGameKey = chip.dataset.game;
+        cards.forEach((c) => c.classList.remove('selected'));
+        card.classList.add('selected');
+        this.currentGameKey = card.dataset.game;
       });
     });
 
@@ -79,7 +82,7 @@ class App {
     document.getElementById('btnQuickMatch').addEventListener('click', async () => {
       sound.playClick();
       this.gameMode = 'quick';
-      this.showRadarScreen('Finding Internet Challenger...');
+      this.showRadarScreen('Finding Challenger...');
       await network.findRandomMatch((status) => {
         document.getElementById('radarStatus').textContent = status;
       });
@@ -114,8 +117,8 @@ class App {
       sound.playClick();
       const code = await network.createPrivateRoom();
       document.getElementById('roomCodeInput').value = code;
-      this.showRadarScreen(`Room Created: ${code}`);
-      document.getElementById('radarStatus').textContent = 'Waiting for opponent to enter code...';
+      this.showRadarScreen(`Room: ${code}`);
+      document.getElementById('radarStatus').textContent = 'Waiting for opponent to join...';
     });
 
     document.getElementById('btnJoinRoom').addEventListener('click', async () => {
@@ -168,7 +171,7 @@ class App {
       this.showScreen('lobbyScreen');
     });
 
-    // Detect Touch Screen to show virtual controls
+    // Detect Touch Screen
     if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
       document.getElementById('mobileControls').classList.remove('hidden');
     }
@@ -224,7 +227,7 @@ class App {
     actionBtn.addEventListener('touchstart', (e) => {
       e.preventDefault();
       input.touchP1.action = true;
-      actionBtn.style.transform = 'scale(0.9)';
+      actionBtn.style.transform = 'scale(0.92)';
     });
 
     actionBtn.addEventListener('touchend', (e) => {
@@ -249,7 +252,7 @@ class App {
   initNetworkListeners() {
     network.on('matched', (data) => {
       sound.playGo();
-      particles.addFloatingText('MATCH FOUND!', this.canvas.width / 2, this.canvas.height / 2, '#00f0ff', 28);
+      particles.addFloatingText('MATCH FOUND!', this.canvas.width / 2, this.canvas.height / 2, '#0ea5e9', 32);
       setTimeout(() => {
         this.launchGame(this.currentGameKey);
       }, 500);
@@ -282,7 +285,6 @@ class App {
   }
 
   startTournament() {
-    // Shuffle all 6 games for best of 5
     const shuffled = [...this.allGames].sort(() => Math.random() - 0.5);
     this.tournamentGames = shuffled.slice(0, 5);
     this.tournamentIndex = 0;
@@ -293,7 +295,7 @@ class App {
 
   launchTournamentGame() {
     const current = this.tournamentGames[this.tournamentIndex];
-    document.getElementById('matchInfoBadge').textContent = `TOURNAMENT: ${current.name} (MATCH ${this.tournamentIndex + 1}/5)`;
+    document.getElementById('matchInfoBadge').textContent = `TOURNAMENT: ${current.name.toUpperCase()} (${this.tournamentIndex + 1}/5)`;
     this.launchGame(current.key);
   }
 
@@ -318,13 +320,12 @@ class App {
   handleGameOver(winner, score) {
     sound.playVictory();
 
-    // Trigger celebration confetti
     try {
       confetti({
-        particleCount: 80,
-        spread: 70,
+        particleCount: 100,
+        spread: 80,
         origin: { y: 0.6 },
-        colors: winner === 1 ? ['#00f0ff', '#ffffff', '#38bdf8'] : ['#ff2e63', '#ffffff', '#ff6b6b']
+        colors: winner === 1 ? ['#0ea5e9', '#38bdf8', '#ffffff', '#f59e0b'] : ['#f43f5e', '#fb7185', '#ffffff', '#f59e0b']
       });
     } catch (e) {
       // ignore
@@ -335,30 +336,28 @@ class App {
       else this.tournamentP2Wins++;
 
       if (this.tournamentP1Wins >= 3 || this.tournamentP2Wins >= 3 || this.tournamentIndex >= 4) {
-        // Tournament Winner!
         const tourneyWinner = this.tournamentP1Wins > this.tournamentP2Wins ? 1 : 2;
         const winnerName = tourneyWinner === 1 ? 'PLAYER 1' : (network.mode === 'bot' ? network.opponentName : 'PLAYER 2');
-        document.getElementById('winnerText').textContent = `🏆 ${winnerName} WINS TOURNAMENT!`;
+        document.getElementById('winnerText').textContent = `🏆 ${winnerName} WINS!`;
         document.getElementById('modalScoreText').innerHTML = `
-          <span style="color: var(--p1-cyan);">${this.tournamentP1Wins}</span>
-          <span style="color: rgba(255,255,255,0.4);">-</span>
-          <span style="color: var(--p2-red);">${this.tournamentP2Wins}</span>
+          <span style="color: var(--p1-blue);">${this.tournamentP1Wins}</span>
+          <span style="color: #cbd5e1;">-</span>
+          <span style="color: var(--p2-pink);">${this.tournamentP2Wins}</span>
         `;
         document.getElementById('winnerModal').classList.remove('hidden');
       } else {
-        // Next tournament round
         this.tournamentIndex++;
         setTimeout(() => this.launchTournamentGame(), 1500);
       }
     } else {
       const winnerName = winner === 1 ? 'PLAYER 1' : (network.mode === 'bot' ? network.opponentName : 'PLAYER 2');
-      const winnerColor = winner === 1 ? 'var(--p1-cyan)' : 'var(--p2-red)';
+      const winnerColor = winner === 1 ? 'var(--p1-blue)' : 'var(--p2-pink)';
       document.getElementById('winnerText').textContent = `${winnerName} WINS!`;
       document.getElementById('winnerText').style.color = winnerColor;
       document.getElementById('modalScoreText').innerHTML = `
-        <span style="color: var(--p1-cyan);">${score.p1}</span>
-        <span style="color: rgba(255,255,255,0.4);">-</span>
-        <span style="color: var(--p2-red);">${score.p2}</span>
+        <span style="color: var(--p1-blue);">${score.p1}</span>
+        <span style="color: #cbd5e1;">-</span>
+        <span style="color: var(--p2-pink);">${score.p2}</span>
       `;
       document.getElementById('winnerModal').classList.remove('hidden');
     }
@@ -366,22 +365,18 @@ class App {
 
   startLoop() {
     const loop = () => {
-      // 1. Update Input
       input.update();
 
-      // 2. Broadcast local inputs if online
       if (network.connected && network.mode !== 'bot') {
         const myInput = network.role === 'host' ? input.p1 : input.p2;
         network.sendInput(myInput);
       }
 
-      // 3. Update Current Game
       if (this.currentGameInstance && !document.getElementById('gameScreen').classList.contains('hidden')) {
         const isBot = (this.gameMode === 'quick' && network.mode === 'bot') || this.gameMode === 'tournament';
         this.currentGameInstance.update(input.p1, input.p2, isBot);
         particles.update();
 
-        // 4. Render Game with screen shake transform
         this.ctx.save();
         this.ctx.translate(particles.shakeOffset.x, particles.shakeOffset.y);
         this.currentGameInstance.draw();
