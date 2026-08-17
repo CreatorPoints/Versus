@@ -347,48 +347,80 @@ class App {
 
     document.getElementById('btnCopyAnalysisPng').addEventListener('click', async () => {
       const copyBtn = document.getElementById('btnCopyAnalysisPng');
-      const card = document.getElementById('chessAnalysisCard');
-      if (!card) return;
-
       const origText = copyBtn.textContent;
       copyBtn.textContent = '📸 Generating...';
 
       try {
-        const { toBlob, toPng } = await import('html-to-image');
-        const blob = await toBlob(card, {
-          pixelRatio: 2,
-          backgroundColor: '#ffffff'
-        });
+        const { snapshotAnalysisCard } = await import('./engine/cardSnapshot.js');
+        const data = this.latestChessAnalysis || {
+          title: document.getElementById('analysisResultTitle').textContent,
+          subtitle: document.getElementById('analysisSubtitle').textContent,
+          p1Name: document.getElementById('analysisP1Name').textContent,
+          p2Name: document.getElementById('analysisP2Name').textContent,
+          p1Elo: document.getElementById('analysisP1Elo').textContent.replace('ELO: ', ''),
+          p2Elo: document.getElementById('analysisP2Elo').textContent.replace('ELO: ', ''),
+          p1Acc: document.getElementById('analysisP1Acc').textContent.replace('%', ''),
+          p2Acc: document.getElementById('analysisP2Acc').textContent.replace('%', ''),
+          p1Perf: document.getElementById('analysisP1Perf').textContent.replace('Perf: ', ''),
+          p2Perf: document.getElementById('analysisP2Perf').textContent.replace('Perf: ', ''),
+          p1Stats: {
+            brilliant: +document.getElementById('p1Brilliant').textContent,
+            great: +document.getElementById('p1Great').textContent,
+            best: +document.getElementById('p1Best').textContent,
+            inaccuracy: +document.getElementById('p1Inaccuracy').textContent,
+            mistake: +document.getElementById('p1Mistake').textContent,
+            blunder: +document.getElementById('p1Blunder').textContent
+          },
+          p2Stats: {
+            brilliant: +document.getElementById('p2Brilliant').textContent,
+            great: +document.getElementById('p2Great').textContent,
+            best: +document.getElementById('p2Best').textContent,
+            inaccuracy: +document.getElementById('p2Inaccuracy').textContent,
+            mistake: +document.getElementById('p2Mistake').textContent,
+            blunder: +document.getElementById('p2Blunder').textContent
+          },
+          pgn: document.getElementById('analysisPgnContent').textContent
+        };
 
-        if (!blob) throw new Error('Blob generation failed');
+        const { blob, canvas } = await snapshotAnalysisCard(data);
 
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'image/png': blob })
-        ]);
+        // Attempt Clipboard write
+        let copiedToClipboard = false;
+        if (navigator.clipboard && window.ClipboardItem) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            copiedToClipboard = true;
+          } catch (clipErr) {
+            copiedToClipboard = false;
+          }
+        }
 
-        sound.playVictory();
-        copyBtn.textContent = 'PNG Copied! ✓';
+        if (copiedToClipboard) {
+          sound.playVictory();
+          copyBtn.textContent = 'PNG Copied! ✓';
+        } else {
+          // Reliable Download Fallback
+          const dataUrl = canvas.toDataURL('image/png');
+          const a = document.createElement('a');
+          a.download = 'versus-chess-analysis.png';
+          a.href = dataUrl;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          sound.playVictory();
+          copyBtn.textContent = 'PNG Saved! 📥';
+        }
+
         setTimeout(() => {
           copyBtn.textContent = origText;
         }, 2200);
       } catch (err) {
-        try {
-          const { toPng } = await import('html-to-image');
-          const dataUrl = await toPng(card, { pixelRatio: 2, backgroundColor: '#ffffff' });
-          const a = document.createElement('a');
-          a.download = 'versus-chess-analysis.png';
-          a.href = dataUrl;
-          a.click();
-          copyBtn.textContent = 'PNG Saved! ✓';
-          setTimeout(() => {
-            copyBtn.textContent = origText;
-          }, 2200);
-        } catch (e) {
-          copyBtn.textContent = 'Error Capturing';
-          setTimeout(() => {
-            copyBtn.textContent = origText;
-          }, 2000);
-        }
+        copyBtn.textContent = 'Error Capturing';
+        setTimeout(() => {
+          copyBtn.textContent = origText;
+        }, 2000);
       }
     });
 
@@ -671,6 +703,7 @@ class App {
 
     // If Chess game review is available, show Lichess-style analysis modal!
     if (analysisData) {
+      this.latestChessAnalysis = analysisData;
       let winTitle = `${analysisData.winner === 1 ? 'White' : 'Black'} Won by ${analysisData.reason}`;
       if (analysisData.reason === 'White Resigned') {
         winTitle = 'Black Won (White Resigned)';
@@ -680,13 +713,20 @@ class App {
         winTitle = `${analysisData.winner === 1 ? 'White' : 'Black'} Won (King Captured)`;
       } else if (analysisData.reason === 'Checkmate') {
         winTitle = `${analysisData.winner === 1 ? 'White' : 'Black'} Won by Checkmate`;
+      } else if (analysisData.reason === 'Stalemate') {
+        winTitle = 'Draw by Stalemate';
       }
 
+      this.latestChessAnalysis.title = winTitle;
+      this.latestChessAnalysis.subtitle = `${analysisData.fullMoves} Full Moves (${analysisData.totalPlies} Plies) • Lichess-Grade Game Review`;
+      this.latestChessAnalysis.p1Name = 'Player 1 (White)';
+      this.latestChessAnalysis.p2Name = this.gameMode === 'ai' ? `AI Bot [${this.difficulty.toUpperCase()}]` : 'Player 2 (Black)';
+
       document.getElementById('analysisResultTitle').textContent = winTitle;
-      document.getElementById('analysisSubtitle').textContent = `${analysisData.fullMoves} Full Moves (${analysisData.totalPlies} Plies) • Lichess-Grade Game Review`;
+      document.getElementById('analysisSubtitle').textContent = this.latestChessAnalysis.subtitle;
       
-      document.getElementById('analysisP1Name').textContent = 'Player 1 (White)';
-      document.getElementById('analysisP2Name').textContent = this.gameMode === 'ai' ? `AI Bot [${this.difficulty.toUpperCase()}]` : 'Player 2 (Black)';
+      document.getElementById('analysisP1Name').textContent = this.latestChessAnalysis.p1Name;
+      document.getElementById('analysisP2Name').textContent = this.latestChessAnalysis.p2Name;
       
       document.getElementById('analysisP1Elo').textContent = `ELO: ${analysisData.p1Elo}`;
       document.getElementById('analysisP2Elo').textContent = `ELO: ${analysisData.p2Elo}`;

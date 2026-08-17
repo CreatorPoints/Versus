@@ -185,12 +185,10 @@ export class ChessGame {
       if (score > bestEngineScore) bestEngineScore = score;
     }
 
-    // 2. Perform the Move
-    this.board[toRow][toCol] = piece;
+    // 2. Perform the Move & Check Promotion
+    const isPromotion = (piece === 'P' && toRow === 0) || (piece === 'p' && toRow === 7);
+    this.board[toRow][toCol] = isPromotion ? (isWhite ? 'Q' : 'q') : piece;
     this.board[fromRow][fromCol] = null;
-
-    if (piece === 'P' && toRow === 0) this.board[toRow][toCol] = 'Q';
-    if (piece === 'p' && toRow === 7) this.board[toRow][toCol] = 'q';
 
     // 3. Evaluate played move score & Centipawn loss (CPL)
     const playedScore = -this.alphaBeta(this.board, 2, -Infinity, Infinity, isWhite ? 'black' : 'white');
@@ -227,6 +225,9 @@ export class ChessGame {
         san = `${cols[fromCol]}x${targetCoord}`;
       } else {
         san = targetCoord;
+      }
+      if (isPromotion) {
+        san += '=Q';
       }
     } else {
       if (captured) {
