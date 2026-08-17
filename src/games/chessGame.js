@@ -1,7 +1,7 @@
 /**
- * VERSUS - Chess Mini-Game with Lichess-Grade Game Analysis & Smooth Piece Animations
- * Accurate Centipawn Loss evaluation, strict Brilliant detection, smooth glide lerp,
- * full PGN notation, and comprehensive post-game review.
+ * VERSUS - Chess Mini-Game with FIDE Strict Legal Move Validation & Lichess Review
+ * Enforces King safety (check evasion), prevents illegal king-hanging pseudo-moves,
+ * calculates Centipawn Loss, accuracy %, and generates comprehensive post-match reviews.
  */
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
@@ -52,8 +52,8 @@ export class ChessGame {
     this.roundEnding = false;
     this.moveHistory = [];
     this.botMoveScheduled = false;
-    this.animatingPiece = null; // Smooth slide animation
-    this.lastMove = null; // { from: {row, col}, to: {row, col} }
+    this.animatingPiece = null;
+    this.lastMove = null;
 
     const eloMap = { baby: 400, normal: 1100, hard: 1700, demon: 2400 };
     this.botElo = eloMap[this.difficulty] || 1100;
@@ -73,12 +73,11 @@ export class ChessGame {
   update(p1Input, p2Input, isBotP2 = false) {
     if (this.isOver || this.roundEnding) return;
 
-    // Update ongoing piece glide animation
+    // Piece glide animation
     if (this.animatingPiece) {
       const now = performance.now();
       const elapsed = now - this.animatingPiece.startTime;
       const t = Math.min(1, elapsed / this.animatingPiece.duration);
-      // Smooth ease-out cubic
       const ease = 1 - Math.pow(1 - t, 3);
       this.animatingPiece.curX = this.animatingPiece.startX + (this.animatingPiece.endX - this.animatingPiece.startX) * ease;
       this.animatingPiece.curY = this.animatingPiece.startY + (this.animatingPiece.endY - this.animatingPiece.startY) * ease;
@@ -158,7 +157,8 @@ export class ChessGame {
 
     if (piece && ((isWhiteTurn && piece === piece.toUpperCase()) || (!isWhiteTurn && piece === piece.toLowerCase()))) {
       this.selectedTile = { row, col };
-      this.validMoves = this.generatePieceMoves(this.board, row, col);
+      // STRICT Legal Moves: Disallow any move leaving King in Check!
+      this.validMoves = this.generateStrictPieceMoves(this.board, row, col);
       sound.playClick();
     } else {
       this.selectedTile = null;
@@ -171,10 +171,10 @@ export class ChessGame {
     const captured = this.board[toRow][toCol];
     const isWhite = this.turn === 'white';
 
-    // 1. Calculate Engine Evaluation for all legal moves to determine best move vs played move
-    const legalMoves = this.getAllLegalMoves(this.board, this.turn);
+    // 1. Calculate Engine Evaluation for all STRICT legal moves
+    const strictLegalMoves = this.getAllStrictLegalMoves(this.board, this.turn);
     let bestEngineScore = -Infinity;
-    for (const m of legalMoves) {
+    for (const m of strictLegalMoves) {
       const origTgt = this.board[m.toRow][m.toCol];
       const origPc = this.board[m.fromRow][m.fromCol];
       this.board[m.toRow][m.toCol] = origPc;
@@ -192,18 +192,17 @@ export class ChessGame {
     if (piece === 'P' && toRow === 0) this.board[toRow][toCol] = 'Q';
     if (piece === 'p' && toRow === 7) this.board[toRow][toCol] = 'q';
 
-    // 3. Evaluate played move score
+    // 3. Evaluate played move score & Centipawn loss (CPL)
     const playedScore = -this.alphaBeta(this.board, 2, -Infinity, Infinity, isWhite ? 'black' : 'white');
     const cpl = Math.max(0, bestEngineScore - playedScore);
 
-    // 4. Move Quality Classification (Strict Centipawn Loss + Sacrifice Verification)
+    // 4. Strict Quality Classification
     let classification = 'best';
     const pieceVal = this.PIECE_VALUES[piece.toLowerCase()] || 0;
     const capturedVal = captured ? (this.PIECE_VALUES[captured.toLowerCase()] || 0) : 0;
-    const isSacrifice = pieceVal >= 300 && capturedVal === 0 && this.isSquareDefendedByOpponent(toRow, toCol, isWhite ? 'black' : 'white');
+    const isSacrifice = pieceVal >= 300 && capturedVal === 0 && this.isSquareAttackedByOpponent(this.board, toRow, toCol, isWhite ? 'black' : 'white');
 
     if (isSacrifice && playedScore >= 180 && cpl <= 20) {
-      // Genuine brilliant tactical sacrifice that retains clear winning advantage!
       classification = 'brilliant';
     } else if (cpl <= 15 && playedScore >= 120) {
       classification = 'great';
@@ -214,7 +213,6 @@ export class ChessGame {
     } else if (cpl <= 260) {
       classification = 'mistake';
     } else {
-      // Losing major material / hanging pieces / dropping >= 260cp
       classification = 'blunder';
     }
 
@@ -235,7 +233,7 @@ export class ChessGame {
       to: { row: toRow, col: toCol }
     };
 
-    // Smooth Glide Animation setup
+    // Smooth Glide Setup
     const startX = this.boardX + fromCol * this.tileSize;
     const startY = this.boardY + fromRow * this.tileSize;
     const endX = this.boardX + toCol * this.tileSize;
@@ -259,23 +257,152 @@ export class ChessGame {
       sound.playShoot('laser');
     }
 
-    if (captured && captured.toLowerCase() === 'k') {
-      this.finishGame(this.turn === 'white' ? 1 : 2, 'King Captured');
-      return;
-    }
-
     this.turn = this.turn === 'white' ? 'black' : 'white';
-    this.statusText = this.turn === 'white' ? "WHITE'S TURN (P1)" : `BLACK'S TURN [ELO: ${this.botElo}]`;
+    const isNowInCheck = this.isKingInCheck(this.board, this.turn);
+    const checkText = isNowInCheck ? ' (+ CHECK!)' : '';
+    this.statusText = this.turn === 'white' ? `WHITE'S TURN (P1)${checkText}` : `BLACK'S TURN [ELO: ${this.botElo}]${checkText}`;
 
-    const allOpponentMoves = this.getAllLegalMoves(this.board, this.turn);
-    if (allOpponentMoves.length === 0) {
-      this.finishGame(this.turn === 'white' ? 2 : 1, 'Checkmate');
+    // 5. Check for Checkmate or Stalemate
+    const allOpponentStrictMoves = this.getAllStrictLegalMoves(this.board, this.turn);
+    if (allOpponentStrictMoves.length === 0) {
+      if (isNowInCheck) {
+        this.finishGame(this.turn === 'white' ? 2 : 1, 'Checkmate');
+      } else {
+        this.finishGame(0, 'Stalemate');
+      }
     }
   }
 
-  isSquareDefendedByOpponent(row, col, opponentColor) {
-    const oppMoves = this.getAllLegalMoves(this.board, opponentColor);
-    return oppMoves.some((m) => m.toRow === row && m.toCol === col);
+  // --- STRICT FIDE LEGAL MOVE ENGINE ---
+  isKingInCheck(board, color) {
+    const kingSymbol = color === 'white' ? 'K' : 'k';
+    const opponentColor = color === 'white' ? 'black' : 'white';
+    let kr = -1, kc = -1;
+
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        if (board[r][c] === kingSymbol) {
+          kr = r;
+          kc = c;
+          break;
+        }
+      }
+      if (kr !== -1) break;
+    }
+
+    if (kr === -1) return false;
+    return this.isSquareAttackedByOpponent(board, kr, kc, opponentColor);
+  }
+
+  isSquareAttackedByOpponent(board, row, col, attackerColor) {
+    const isAttackerWhite = attackerColor === 'white';
+
+    // 1. Pawn Attacks
+    const pawnRow = isAttackerWhite ? row + 1 : row - 1;
+    const targetPawn = isAttackerWhite ? 'P' : 'p';
+    if (pawnRow >= 0 && pawnRow <= 7) {
+      for (const dc of [-1, 1]) {
+        const pc = col + dc;
+        if (pc >= 0 && pc <= 7 && board[pawnRow][pc] === targetPawn) return true;
+      }
+    }
+
+    // 2. Knight Attacks
+    const targetKnight = isAttackerWhite ? 'N' : 'n';
+    const kOffsets = [
+      [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+      [1, -2], [1, 2], [2, -1], [2, 1]
+    ];
+    for (const [dr, dc] of kOffsets) {
+      const nr = row + dr;
+      const nc = col + dc;
+      if (nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7 && board[nr][nc] === targetKnight) return true;
+    }
+
+    // 3. King Adjacent Attacks
+    const targetKing = isAttackerWhite ? 'K' : 'k';
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr === 0 && dc === 0) continue;
+        const nr = row + dr;
+        const nc = col + dc;
+        if (nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7 && board[nr][nc] === targetKing) return true;
+      }
+    }
+
+    // 4. Straight Ray Attacks (Rook & Queen)
+    const targetRook = isAttackerWhite ? 'R' : 'r';
+    const targetQueen = isAttackerWhite ? 'Q' : 'q';
+    const straightDirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (const [dr, dc] of straightDirs) {
+      let r = row + dr;
+      let c = col + dc;
+      while (r >= 0 && r <= 7 && c >= 0 && c <= 7) {
+        const p = board[r][c];
+        if (p) {
+          if (p === targetRook || p === targetQueen) return true;
+          break;
+        }
+        r += dr;
+        c += dc;
+      }
+    }
+
+    // 5. Diagonal Ray Attacks (Bishop & Queen)
+    const targetBishop = isAttackerWhite ? 'B' : 'b';
+    const diagDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+    for (const [dr, dc] of diagDirs) {
+      let r = row + dr;
+      let c = col + dc;
+      while (r >= 0 && r <= 7 && c >= 0 && c <= 7) {
+        const p = board[r][c];
+        if (p) {
+          if (p === targetBishop || p === targetQueen) return true;
+          break;
+        }
+        r += dr;
+        c += dc;
+      }
+    }
+
+    return false;
+  }
+
+  generateStrictPieceMoves(board, row, col) {
+    const piece = board[row][col];
+    if (!piece) return [];
+    const isWhite = piece === piece.toUpperCase();
+    const color = isWhite ? 'white' : 'black';
+    const pseudoMoves = this.generatePieceMoves(board, row, col);
+
+    return pseudoMoves.filter((m) => {
+      const origTarget = board[m.toRow][m.toCol];
+      const origPiece = board[row][col];
+      board[m.toRow][m.toCol] = origPiece;
+      board[row][col] = null;
+
+      const inCheck = this.isKingInCheck(board, color);
+
+      board[row][col] = origPiece;
+      board[m.toRow][m.toCol] = origTarget;
+      return !inCheck;
+    });
+  }
+
+  getAllStrictLegalMoves(board, color) {
+    const allPseudo = this.getAllLegalMoves(board, color);
+    return allPseudo.filter((m) => {
+      const origTarget = board[m.toRow][m.toCol];
+      const origPiece = board[m.fromRow][m.fromCol];
+      board[m.toRow][m.toCol] = origPiece;
+      board[m.fromRow][m.fromCol] = null;
+
+      const inCheck = this.isKingInCheck(board, color);
+
+      board[m.fromRow][m.fromCol] = origPiece;
+      board[m.toRow][m.toCol] = origTarget;
+      return !inCheck;
+    });
   }
 
   generateGameAnalysis(winner, reason) {
@@ -353,9 +480,10 @@ export class ChessGame {
     let winText = `${reason.toUpperCase()}! P1 WINS!`;
     if (reason === 'White Resigned') winText = 'WHITE RESIGNED! P2 WINS!';
     else if (reason === 'Black Resigned') winText = 'BLACK RESIGNED! P1 WINS!';
+    else if (reason === 'Stalemate') winText = 'DRAW BY STALEMATE!';
     else if (winner === 2) winText = `${reason.toUpperCase()}! P2 WINS!`;
 
-    particles.addFloatingText(winText, this.width / 2, this.height * 0.2, winner === 1 ? '#0ea5e9' : '#f43f5e', 30);
+    particles.addFloatingText(winText, this.width / 2, this.height * 0.2, winner === 1 ? '#0ea5e9' : winner === 2 ? '#f43f5e' : '#f59e0b', 30);
 
     const analysis = this.generateGameAnalysis(winner, reason);
 
@@ -470,7 +598,7 @@ export class ChessGame {
   }
 
   makeBotMove() {
-    const legalMoves = this.getAllLegalMoves(this.board, 'black');
+    const legalMoves = this.getAllStrictLegalMoves(this.board, 'black');
     if (legalMoves.length === 0) return;
 
     let chosenMove = null;
@@ -523,8 +651,11 @@ export class ChessGame {
   alphaBeta(board, depth, alpha, beta, color) {
     if (depth === 0) return this.evaluateBoard(board);
 
-    const moves = this.getAllLegalMoves(board, color);
-    if (moves.length === 0) return -10000;
+    const moves = this.getAllStrictLegalMoves(board, color);
+    if (moves.length === 0) {
+      const inCheck = this.isKingInCheck(board, color);
+      return inCheck ? -10000 : 0; // -10000 for Checkmate, 0 for Stalemate draw
+    }
 
     let bestScore = -Infinity;
     for (const m of moves) {
@@ -633,7 +764,7 @@ export class ChessGame {
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         if (this.animatingPiece && this.animatingPiece.endX === (this.boardX + c * this.tileSize) && this.animatingPiece.endY === (this.boardY + r * this.tileSize)) {
-          continue; // Drawn by animator
+          continue;
         }
         const piece = this.board[r][c];
         if (piece) {
