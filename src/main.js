@@ -24,8 +24,10 @@ class App {
     
     this.currentGameKey = 'tank';
     this.currentGameInstance = null;
-    this.gameMode = 'quick'; // 'quick' | 'tournament' | 'local' | 'room'
-    
+    this.gameMode = 'ai'; // 'ai' | 'local' | 'tournament' | 'room' | 'quick_wip'
+    this.difficulty = 'normal'; // 'baby' | 'normal' | 'hard' | 'demon'
+    this.theme = localStorage.getItem('versus_theme') || 'light';
+
     // Tournament State
     this.tournamentGames = [];
     this.tournamentIndex = 0;
@@ -33,38 +35,157 @@ class App {
     this.tournamentP2Wins = 0;
 
     this.allGames = [
-      { key: 'tank', name: 'Tank Battle', class: TankBattle },
-      { key: 'hockey', name: 'Glow Hockey', class: GlowHockey },
-      { key: 'sumo', name: 'Sumo Spinners', class: SumoSpinners },
-      { key: 'draw', name: 'Quick Draw', class: QuickDraw },
-      { key: 'soccer', name: 'Micro Soccer', class: MicroSoccer },
-      { key: 'blade', name: 'Blade Clash', class: BladeClash },
-      { key: 'race', name: 'Micro Race', class: MicroRace },
-      { key: 'pinball', name: 'Pinball Duel', class: PinballDuel }
+      { 
+        key: 'tank', 
+        name: 'Tank Battle', 
+        tag: 'Ricochet Bullets',
+        desc: 'Drive your combat tank, bounce bullets off steel walls, smash obstacles, and eliminate your opponent before they hit you!',
+        class: TankBattle 
+      },
+      { 
+        key: 'hockey', 
+        name: 'Glow Hockey', 
+        tag: 'Smash Charge',
+        desc: 'Fast-paced arcade air hockey! Deflect the puck, charge up your power smash shot, and blast goals into the opponent net.',
+        class: GlowHockey 
+      },
+      { 
+        key: 'sumo', 
+        name: 'Sumo Spinners', 
+        tag: 'Ring Out!',
+        desc: 'Clash in a crumbling hexagon arena where edge tiles fall into the abyss over time! Boost-ram your opponent off the edge.',
+        class: SumoSpinners 
+      },
+      { 
+        key: 'draw', 
+        name: 'Quick Draw', 
+        tag: 'Reflex Duel',
+        desc: 'Wild West reaction shootout! Wait for the official "FIRE!" cue without misfiring early, and strike with lightning reflexes.',
+        class: QuickDraw 
+      },
+      { 
+        key: 'soccer', 
+        name: 'Micro Soccer', 
+        tag: 'Bicycle Kick',
+        desc: '1v1 physics capsule soccer. Leap into the air, flip and bicycle kick the ball into the net before time expires!',
+        class: MicroSoccer 
+      },
+      { 
+        key: 'blade', 
+        name: 'Blade Clash', 
+        tag: 'Parry & Strike',
+        desc: 'High skill cyber warrior duel! Dash strike with your laser katana and time your parry to stun the enemy and counter-slash.',
+        class: BladeClash 
+      },
+      { 
+        key: 'race', 
+        name: 'Micro Race', 
+        tag: 'Kart Drift',
+        desc: 'Top-down arcade kart racing! Drift tight around curves, hit max speed, and be the first to complete 3 full laps.',
+        class: MicroRace 
+      },
+      { 
+        key: 'pinball', 
+        name: 'Pinball Duel', 
+        tag: 'Bumper Bounce',
+        desc: 'Dual-paddle pinball table with high-impulse bumpers in the center! Angle your deflection shots to slip past the opponent.',
+        class: PinballDuel 
+      }
     ];
 
+    this.initTheme();
     this.initUI();
     this.initTouchControls();
     this.initNetworkListeners();
+    this.selectGame('tank');
     this.startLoop();
   }
 
+  initTheme() {
+    document.documentElement.dataset.theme = this.theme;
+    this.updateThemeUI();
+  }
+
+  setTheme(newTheme) {
+    this.theme = newTheme;
+    localStorage.setItem('versus_theme', this.theme);
+    document.documentElement.dataset.theme = this.theme;
+    this.updateThemeUI();
+  }
+
+  updateThemeUI() {
+    const isDark = this.theme === 'dark';
+    const sunIcon = document.getElementById('themeIconSun');
+    const moonIcon = document.getElementById('themeIconMoon');
+    if (sunIcon && moonIcon) {
+      if (isDark) {
+        sunIcon.classList.add('hidden');
+        moonIcon.classList.remove('hidden');
+      } else {
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+      }
+    }
+
+    const optLight = document.getElementById('optThemeLight');
+    const optDark = document.getElementById('optThemeDark');
+    if (optLight && optDark) {
+      if (isDark) {
+        optLight.classList.remove('active');
+        optDark.classList.add('active');
+      } else {
+        optLight.classList.add('active');
+        optDark.classList.remove('active');
+      }
+    }
+  }
+
   initUI() {
-    // Sound Toggle Button
-    const btnSound = document.getElementById('btnToggleSound');
-    btnSound.addEventListener('click', () => {
-      const isMuted = sound.toggleMute();
-      document.getElementById('soundText').textContent = isMuted ? 'Sound OFF' : 'Sound ON';
+    // Quick Theme Toggle
+    document.getElementById('btnQuickTheme').addEventListener('click', () => {
+      sound.playClick();
+      this.setTheme(this.theme === 'dark' ? 'light' : 'dark');
     });
 
-    // Controls Guide Modal
-    document.getElementById('btnControlsGuide').addEventListener('click', () => {
-      sound.playClick();
-      document.getElementById('guideModal').classList.remove('hidden');
+    // Sound Quick Toggle
+    document.getElementById('btnSoundToggle').addEventListener('click', () => {
+      const isMuted = sound.toggleMute();
+      this.updateSoundUI(isMuted);
     });
-    document.getElementById('btnCloseGuideModal').addEventListener('click', () => {
+
+    // Settings Modal
+    document.getElementById('btnOpenSettings').addEventListener('click', () => {
       sound.playClick();
-      document.getElementById('guideModal').classList.add('hidden');
+      document.getElementById('settingsModal').classList.remove('hidden');
+    });
+    document.getElementById('btnCloseSettingsModal').addEventListener('click', () => {
+      sound.playClick();
+      document.getElementById('settingsModal').classList.add('hidden');
+    });
+
+    // Settings Modal Options
+    document.getElementById('optThemeLight').addEventListener('click', () => {
+      sound.playClick();
+      this.setTheme('light');
+    });
+    document.getElementById('optThemeDark').addEventListener('click', () => {
+      sound.playClick();
+      this.setTheme('dark');
+    });
+
+    document.getElementById('optSoundOn').addEventListener('click', () => {
+      if (sound.muted) sound.toggleMute();
+      this.updateSoundUI(false);
+    });
+    document.getElementById('optSoundOff').addEventListener('click', () => {
+      if (!sound.muted) sound.toggleMute();
+      this.updateSoundUI(true);
+    });
+
+    // WIP Modal Close
+    document.getElementById('btnCloseWipModal').addEventListener('click', () => {
+      sound.playClick();
+      document.getElementById('wipModal').classList.add('hidden');
     });
 
     // Game Picker Cards (4 in a row)
@@ -74,51 +195,60 @@ class App {
         sound.playClick();
         cards.forEach((c) => c.classList.remove('selected'));
         card.classList.add('selected');
-        this.currentGameKey = card.dataset.game;
+        this.selectGame(card.dataset.game);
       });
     });
 
-    // Quick Match Button (Online 1v1 Challenger)
-    document.getElementById('btnQuickMatch').addEventListener('click', async () => {
-      sound.playClick();
-      this.gameMode = 'quick';
-      this.showRadarScreen('Finding Challenger...');
-      await network.findRandomMatch((status) => {
-        document.getElementById('radarStatus').textContent = status;
+    // Mode Selection Pills in Side Panel
+    const modePills = document.querySelectorAll('.mode-pill');
+    modePills.forEach((pill) => {
+      pill.addEventListener('click', () => {
+        sound.playClick();
+        const mode = pill.dataset.mode;
+        
+        if (mode === 'quick_wip') {
+          document.getElementById('wipModal').classList.remove('hidden');
+          return;
+        }
+
+        modePills.forEach((p) => p.classList.remove('active'));
+        pill.classList.add('active');
+        this.gameMode = mode;
+
+        // Toggle AI difficulty section visibility
+        const aiSec = document.getElementById('aiDifficultySection');
+        if (mode === 'ai') {
+          aiSec.style.display = 'flex';
+        } else {
+          aiSec.style.display = 'none';
+        }
       });
     });
 
-    // Tournament Mode Button (Best of 5 Rotation)
-    document.getElementById('btnTournament').addEventListener('click', () => {
-      sound.playClick();
-      this.gameMode = 'tournament';
-      this.startTournament();
+    // AI Difficulty Buttons
+    const diffButtons = document.querySelectorAll('.diff-btn');
+    diffButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sound.playClick();
+        diffButtons.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.difficulty = btn.dataset.diff;
+      });
     });
 
-    // Local 2-Player Button (Same Device)
-    document.getElementById('btnLocal2P').addEventListener('click', () => {
+    // Play Button in Side Panel
+    document.getElementById('btnPlayNow').addEventListener('click', () => {
       sound.playClick();
-      this.gameMode = 'local';
-      input.setLocal2P(true);
-      this.launchGame(this.currentGameKey);
+      this.handlePlayAction();
     });
 
-    // Private Room Modal
-    document.getElementById('btnPrivateRoom').addEventListener('click', () => {
-      sound.playClick();
-      document.getElementById('roomModal').classList.remove('hidden');
-    });
-    document.getElementById('btnCloseRoomModal').addEventListener('click', () => {
-      sound.playClick();
-      document.getElementById('roomModal').classList.add('hidden');
-    });
-
+    // Private Room Modal Buttons
     document.getElementById('btnCreateRoom').addEventListener('click', async () => {
       sound.playClick();
       const code = await network.createPrivateRoom();
       document.getElementById('roomCodeInput').value = code;
       this.showRadarScreen(`Room: ${code}`);
-      document.getElementById('radarStatus').textContent = 'Waiting for opponent to join...';
+      document.getElementById('radarStatus').textContent = 'Waiting for friend to enter code...';
     });
 
     document.getElementById('btnJoinRoom').addEventListener('click', async () => {
@@ -131,7 +261,12 @@ class App {
       }
     });
 
-    // Cancel Matchmaking
+    document.getElementById('btnCloseRoomModal').addEventListener('click', () => {
+      sound.playClick();
+      document.getElementById('roomModal').classList.add('hidden');
+    });
+
+    // Matchmaking Cancel
     document.getElementById('btnCancelMatch').addEventListener('click', () => {
       sound.playClick();
       network.disconnect();
@@ -174,6 +309,72 @@ class App {
     // Detect Touch Screen
     if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
       document.getElementById('mobileControls').classList.remove('hidden');
+    }
+  }
+
+  updateSoundUI(isMuted) {
+    const onSvg = document.getElementById('soundSvgOn');
+    const offSvg = document.getElementById('soundSvgOff');
+    if (onSvg && offSvg) {
+      if (isMuted) {
+        onSvg.classList.add('hidden');
+        offSvg.classList.remove('hidden');
+      } else {
+        onSvg.classList.remove('hidden');
+        offSvg.classList.add('hidden');
+      }
+    }
+
+    const optOn = document.getElementById('optSoundOn');
+    const optOff = document.getElementById('optSoundOff');
+    if (optOn && optOff) {
+      if (isMuted) {
+        optOn.classList.remove('active');
+        optOff.classList.add('active');
+      } else {
+        optOn.classList.add('active');
+        optOff.classList.remove('active');
+      }
+    }
+  }
+
+  selectGame(gameKey) {
+    this.currentGameKey = gameKey;
+    const gameDef = this.allGames.find((g) => g.key === gameKey) || this.allGames[0];
+
+    document.getElementById('panelGameTitle').textContent = gameDef.name;
+    document.getElementById('panelGameTag').textContent = gameDef.tag;
+    document.getElementById('panelGameDesc').textContent = gameDef.desc;
+
+    // Clone and display preview SVG in side panel
+    const selectedCard = document.querySelector(`.game-card[data-game="${gameKey}"]`);
+    const previewContainer = document.getElementById('panelPreviewContainer');
+    if (selectedCard && previewContainer) {
+      const svg = selectedCard.querySelector('svg');
+      if (svg) {
+        previewContainer.innerHTML = '';
+        previewContainer.appendChild(svg.cloneNode(true));
+      }
+    }
+
+    // Animate side panel
+    const panel = document.getElementById('gameSidePanel');
+    panel.classList.remove('collapsed');
+  }
+
+  handlePlayAction() {
+    if (this.gameMode === 'ai') {
+      network.disconnect();
+      input.setLocal2P(false);
+      this.launchGame(this.currentGameKey);
+    } else if (this.gameMode === 'local') {
+      network.disconnect();
+      input.setLocal2P(true);
+      this.launchGame(this.currentGameKey);
+    } else if (this.gameMode === 'tournament') {
+      this.startTournament();
+    } else if (this.gameMode === 'room') {
+      document.getElementById('roomModal').classList.remove('hidden');
     }
   }
 
@@ -223,7 +424,6 @@ class App {
     stickZone.addEventListener('touchend', endTouch);
     stickZone.addEventListener('touchcancel', endTouch);
 
-    // Action button
     actionBtn.addEventListener('touchstart', (e) => {
       e.preventDefault();
       input.touchP1.action = true;
@@ -304,7 +504,12 @@ class App {
     this.currentGameKey = gameDef.key;
 
     if (this.gameMode !== 'tournament') {
-      const modeLabel = this.gameMode === 'quick' ? '1v1 QUICK DUEL' : this.gameMode === 'local' ? 'LOCAL 2P' : 'PRIVATE ROOM';
+      let modeLabel = 'LOCAL 2P';
+      if (this.gameMode === 'ai') {
+        modeLabel = `VS AI [${this.difficulty.toUpperCase()}]`;
+      } else if (this.gameMode === 'room') {
+        modeLabel = 'PRIVATE ROOM';
+      }
       document.getElementById('matchInfoBadge').textContent = `${gameDef.name.toUpperCase()} - ${modeLabel}`;
     }
 
@@ -314,7 +519,7 @@ class App {
     const GameClass = gameDef.class;
     this.currentGameInstance = new GameClass(this.canvas, this.ctx, (winner, score) => {
       this.handleGameOver(winner, score);
-    });
+    }, this.difficulty);
   }
 
   handleGameOver(winner, score) {
@@ -337,7 +542,7 @@ class App {
 
       if (this.tournamentP1Wins >= 3 || this.tournamentP2Wins >= 3 || this.tournamentIndex >= 4) {
         const tourneyWinner = this.tournamentP1Wins > this.tournamentP2Wins ? 1 : 2;
-        const winnerName = tourneyWinner === 1 ? 'PLAYER 1' : (network.mode === 'bot' ? network.opponentName : 'PLAYER 2');
+        const winnerName = tourneyWinner === 1 ? 'PLAYER 1' : 'AI BOT';
         document.getElementById('winnerText').textContent = `🏆 ${winnerName} WINS!`;
         document.getElementById('modalScoreText').innerHTML = `
           <span style="color: var(--p1-blue);">${this.tournamentP1Wins}</span>
@@ -350,7 +555,10 @@ class App {
         setTimeout(() => this.launchTournamentGame(), 1500);
       }
     } else {
-      const winnerName = winner === 1 ? 'PLAYER 1' : (network.mode === 'bot' ? network.opponentName : 'PLAYER 2');
+      let winnerName = winner === 1 ? 'PLAYER 1' : 'PLAYER 2';
+      if (this.gameMode === 'ai' && winner === 2) {
+        winnerName = `BOT [${this.difficulty.toUpperCase()}]`;
+      }
       const winnerColor = winner === 1 ? 'var(--p1-blue)' : 'var(--p2-pink)';
       document.getElementById('winnerText').textContent = `${winnerName} WINS!`;
       document.getElementById('winnerText').style.color = winnerColor;
@@ -373,7 +581,7 @@ class App {
       }
 
       if (this.currentGameInstance && !document.getElementById('gameScreen').classList.contains('hidden')) {
-        const isBot = (this.gameMode === 'quick' && network.mode === 'bot') || this.gameMode === 'tournament';
+        const isBot = this.gameMode === 'ai' || this.gameMode === 'tournament';
         this.currentGameInstance.update(input.p1, input.p2, isBot);
         particles.update();
 

@@ -1,15 +1,16 @@
 /**
  * VERSUS - Glow Air Hockey Mini-Game
- * High tempo arcade physics, power smash shots, goal celebrations!
+ * High tempo arcade physics, power smash shots, AI difficulties!
  */
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 
 export class GlowHockey {
-  constructor(canvas, ctx, onGameOver) {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
+    this.difficulty = difficulty;
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -36,6 +37,11 @@ export class GlowHockey {
       maxSpeed: 14.5
     };
 
+    let p2Speed = 6.8;
+    if (this.difficulty === 'baby') p2Speed = 3.6;
+    else if (this.difficulty === 'hard') p2Speed = 9.2;
+    else if (this.difficulty === 'demon') p2Speed = 12.0;
+
     this.p1 = {
       x: 120,
       y: this.height / 2,
@@ -55,7 +61,7 @@ export class GlowHockey {
       vy: 0,
       radius: 26,
       color: '#f43f5e',
-      speed: 6.8,
+      speed: p2Speed,
       charge: 0,
       isCharging: false
     };
@@ -209,15 +215,36 @@ export class GlowHockey {
     let targetY = this.height / 2;
     let action = false;
 
-    if (this.puck.x > this.width * 0.45) {
-      targetX = this.puck.x + 10;
-      targetY = this.puck.y;
-      if (Math.hypot(this.puck.x - this.p2.x, this.puck.y - this.p2.y) < 60) {
-        action = Math.random() < 0.3;
+    if (this.difficulty === 'baby') {
+      if (this.puck.x > this.width * 0.6) {
+        targetX = this.puck.x + 20;
+        targetY = this.puck.y + (Math.random() - 0.5) * 40;
+      } else {
+        targetX = this.width - 80;
+        targetY = this.height / 2;
       }
-    } else {
-      targetX = this.width - 100;
-      targetY = this.puck.y * 0.6 + this.height * 0.2;
+    } else if (this.difficulty === 'normal') {
+      if (this.puck.x > this.width * 0.45) {
+        targetX = this.puck.x + 10;
+        targetY = this.puck.y;
+        if (Math.hypot(this.puck.x - this.p2.x, this.puck.y - this.p2.y) < 60) {
+          action = Math.random() < 0.3;
+        }
+      } else {
+        targetX = this.width - 100;
+        targetY = this.puck.y * 0.6 + this.height * 0.2;
+      }
+    } else if (this.difficulty === 'hard') {
+      // Intercept puck trajectory
+      const leadTime = 6;
+      targetX = Math.min(this.width - 40, Math.max(this.width / 2 + 40, this.puck.x + this.puck.vx * leadTime));
+      targetY = this.puck.y + this.puck.vy * leadTime;
+      action = Math.random() < 0.65;
+    } else if (this.difficulty === 'demon') {
+      // Aggressive instant prediction
+      targetX = Math.min(this.width - 30, Math.max(this.width / 2 + 30, this.puck.x + this.puck.vx * 4));
+      targetY = this.puck.y + this.puck.vy * 4;
+      action = true;
     }
 
     const dx = targetX - this.p2.x;
@@ -234,11 +261,9 @@ export class GlowHockey {
   draw() {
     this.ctx.save();
 
-    // Ice Rink Background
     this.ctx.fillStyle = '#f0f9ff';
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Center divider & circle
     this.ctx.strokeStyle = '#bae6fd';
     this.ctx.lineWidth = 3;
     this.ctx.setLineDash([8, 8]);
@@ -252,27 +277,22 @@ export class GlowHockey {
     this.ctx.arc(this.width / 2, this.height / 2, 60, 0, Math.PI * 2);
     this.ctx.stroke();
 
-    // Goal Areas
-    // Left Goal (Blue)
     this.ctx.fillStyle = 'rgba(14, 165, 233, 0.15)';
     this.ctx.strokeStyle = '#0ea5e9';
     this.ctx.lineWidth = 4;
     this.ctx.fillRect(4, this.goalY, 12, this.goalSize);
     this.ctx.strokeRect(4, this.goalY, 12, this.goalSize);
 
-    // Right Goal (Pink)
     this.ctx.fillStyle = 'rgba(244, 63, 94, 0.15)';
     this.ctx.strokeStyle = '#f43f5e';
     this.ctx.lineWidth = 4;
     this.ctx.fillRect(this.width - 16, this.goalY, 12, this.goalSize);
     this.ctx.strokeRect(this.width - 16, this.goalY, 12, this.goalSize);
 
-    // Outer Border
     this.ctx.strokeStyle = '#cbd5e1';
     this.ctx.lineWidth = 4;
     this.ctx.strokeRect(10, 10, this.width - 20, this.height - 20);
 
-    // Puck Trail
     for (let i = 0; i < this.puck.trail.length; i++) {
       const pt = this.puck.trail[i];
       const alpha = (i + 1) / this.puck.trail.length;
@@ -282,17 +302,14 @@ export class GlowHockey {
       this.ctx.fill();
     }
 
-    // Puck
     this.ctx.fillStyle = '#1e293b';
     this.ctx.beginPath();
     this.ctx.arc(this.puck.x, this.puck.y, this.puck.radius, 0, Math.PI * 2);
     this.ctx.fill();
 
-    // Paddles
     this.drawPaddle(this.p1);
     this.drawPaddle(this.p2);
 
-    // Score HUD
     this.drawScoreHUD();
 
     this.ctx.restore();

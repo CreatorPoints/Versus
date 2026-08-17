@@ -1,15 +1,16 @@
 /**
  * VERSUS - Quick Draw / Reaction Duel
- * High stakes reflex showdown, deceptive cues, millisecond timing!
+ * High stakes reflex showdown, millisecond timing, AI difficulties!
  */
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 
 export class QuickDraw {
-  constructor(canvas, ctx, onGameOver) {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
+    this.difficulty = difficulty;
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -40,9 +41,18 @@ export class QuickDraw {
     this.fakeSignalTime = Math.random() < 0.45 ? this.readyDelay + Math.floor(Math.random() * 50 + 30) : null;
     this.fakeText = Math.random() < 0.5 ? 'WAIT...' : 'DON\'T SHOOT!';
 
-    this.botReactionTime = Math.floor(Math.random() * 120 + 210);
-    this.botTimer = 0;
+    // Tuned Reaction Speeds
+    if (this.difficulty === 'baby') {
+      this.botReactionTime = Math.floor(Math.random() * 250 + 550); // 550ms - 800ms
+    } else if (this.difficulty === 'normal') {
+      this.botReactionTime = Math.floor(Math.random() * 100 + 240); // 240ms - 340ms
+    } else if (this.difficulty === 'hard') {
+      this.botReactionTime = Math.floor(Math.random() * 50 + 150);  // 150ms - 200ms
+    } else if (this.difficulty === 'demon') {
+      this.botReactionTime = Math.floor(Math.random() * 35 + 75);   // 75ms - 110ms (Superhuman!)
+    }
 
+    this.botTimer = 0;
     this.roundEnding = false;
   }
 
@@ -74,14 +84,19 @@ export class QuickDraw {
       particles.shake(8, 10);
     }
 
+    // Bot Reaction
     if (isBotP2 && !this.p2Shot && !this.p2Foul) {
       if (this.state === 'DRAW') {
         this.botTimer++;
         if (performance.now() - this.drawTime >= this.botReactionTime) {
           p2Input = { justAction: true, action: true };
         }
-      } else if (this.fakeSignalTime && this.timer === this.fakeSignalTime + 4 && Math.random() < 0.15) {
-        p2Input = { justAction: true, action: true };
+      } else if (this.fakeSignalTime && this.timer === this.fakeSignalTime + 4) {
+        // Baby & Normal bots might fall for fake cues!
+        const baitChance = this.difficulty === 'baby' ? 0.45 : this.difficulty === 'normal' ? 0.15 : 0;
+        if (Math.random() < baitChance) {
+          p2Input = { justAction: true, action: true };
+        }
       }
     }
 
@@ -184,7 +199,6 @@ export class QuickDraw {
   draw() {
     this.ctx.save();
 
-    // Warm desert cartoon background
     const bgGrad = this.ctx.createLinearGradient(0, 0, 0, this.height);
     bgGrad.addColorStop(0, '#fef3c7');
     bgGrad.addColorStop(0.7, '#fde68a');
@@ -192,11 +206,9 @@ export class QuickDraw {
     this.ctx.fillStyle = bgGrad;
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Duel Ground Platform
     this.ctx.fillStyle = '#f59e0b';
     this.ctx.fillRect(40, this.height * 0.7, this.width - 80, 8);
 
-    // Big Center Signal Display
     this.ctx.save();
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';

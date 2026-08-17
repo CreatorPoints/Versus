@@ -1,15 +1,16 @@
 /**
  * VERSUS - Tank Battle Mini-Game
- * Bouncing bullets, destructible obstacles, tank treads, power-ups!
+ * Bouncing bullets, destructible obstacles, tank treads, AI difficulties!
  */
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 
 export class TankBattle {
-  constructor(canvas, ctx, onGameOver) {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
+    this.difficulty = difficulty; // 'baby' | 'normal' | 'hard' | 'demon'
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -24,7 +25,6 @@ export class TankBattle {
   resetRound() {
     this.bullets = [];
     this.treadMarks = [];
-    this.powerups = [];
     this.obstacles = [
       { x: this.width * 0.25, y: this.height * 0.25, w: 40, h: 40, hp: 3, maxHp: 3 },
       { x: this.width * 0.75 - 40, y: this.height * 0.25, w: 40, h: 40, hp: 3, maxHp: 3 },
@@ -35,6 +35,11 @@ export class TankBattle {
       { x: this.width * 0.5 - 20, y: this.height * 0.85 - 40, w: 40, h: 40, steel: true }
     ];
 
+    let p2MaxSpeed = 3.4;
+    if (this.difficulty === 'baby') p2MaxSpeed = 2.0;
+    else if (this.difficulty === 'hard') p2MaxSpeed = 4.2;
+    else if (this.difficulty === 'demon') p2MaxSpeed = 5.0;
+
     this.p1 = {
       x: 80,
       y: this.height / 2,
@@ -44,7 +49,6 @@ export class TankBattle {
       size: 22,
       color: '#0ea5e9',
       ammo: 5,
-      maxAmmo: 5,
       reloadTime: 0,
       alive: true
     };
@@ -54,11 +58,10 @@ export class TankBattle {
       y: this.height / 2,
       angle: Math.PI,
       speed: 0,
-      maxSpeed: 3.4,
+      maxSpeed: p2MaxSpeed,
       size: 22,
       color: '#f43f5e',
       ammo: 5,
-      maxAmmo: 5,
       reloadTime: 0,
       alive: true
     };
@@ -82,7 +85,7 @@ export class TankBattle {
       b.y += b.vy;
       b.life--;
 
-      if (Math.random() < 0.4) {
+      if (Math.random() < 0.35) {
         particles.spawnTrail(b.x, b.y, b.owner === 1 ? 'rgba(14, 165, 233, 0.4)' : 'rgba(244, 63, 94, 0.4)', 2.5);
       }
 
@@ -192,7 +195,11 @@ export class TankBattle {
 
     if (input.justAction && tank.reloadTime <= 0) {
       this.fireBullet(tank, color === '#0ea5e9' ? 1 : 2);
-      tank.reloadTime = 22;
+      let cd = 22;
+      if (this.difficulty === 'baby') cd = 36;
+      else if (this.difficulty === 'hard') cd = 16;
+      else if (this.difficulty === 'demon') cd = 10;
+      tank.reloadTime = cd;
     }
   }
 
@@ -263,23 +270,48 @@ export class TankBattle {
   }
 
   computeBotInput() {
-    const dx = this.p1.x - this.p2.x;
-    const dy = this.p1.y - this.p2.y;
+    let targetX = this.p1.x;
+    let targetY = this.p1.y;
+
+    if (this.difficulty === 'hard' || this.difficulty === 'demon') {
+      // Lead target with velocity
+      targetX += (this.p1.x - 80) * 0.15;
+      targetY += (this.p1.y - this.height / 2) * 0.15;
+    }
+
+    const dx = targetX - this.p2.x;
+    const dy = targetY - this.p2.y;
     const dist = Math.hypot(dx, dy);
     const angleToTarget = Math.atan2(dy, dx);
 
     const aimDiff = Math.abs(this.p2.angle - angleToTarget);
-    const shouldShoot = dist < 340 && aimDiff < 0.4 && Math.random() < 0.14;
 
+    let shouldShoot = false;
     let moveX = Math.cos(angleToTarget);
     let moveY = Math.sin(angleToTarget);
 
-    for (const b of this.bullets) {
-      if (b.owner === 1) {
-        const bDist = Math.hypot(b.x - this.p2.x, b.y - this.p2.y);
-        if (bDist < 120) {
-          moveX = -b.vy;
-          moveY = b.vx;
+    if (this.difficulty === 'baby') {
+      shouldShoot = dist < 220 && aimDiff < 0.6 && Math.random() < 0.04;
+      moveX += (Math.random() - 0.5) * 1.5;
+      moveY += (Math.random() - 0.5) * 1.5;
+    } else if (this.difficulty === 'normal') {
+      shouldShoot = dist < 340 && aimDiff < 0.35 && Math.random() < 0.14;
+    } else if (this.difficulty === 'hard') {
+      shouldShoot = dist < 420 && aimDiff < 0.22 && Math.random() < 0.32;
+    } else if (this.difficulty === 'demon') {
+      shouldShoot = dist < 500 && (aimDiff < 0.18 || Math.random() < 0.4);
+    }
+
+    // Bullet dodging
+    if (this.difficulty !== 'baby') {
+      const dodgeThreshold = this.difficulty === 'demon' ? 180 : this.difficulty === 'hard' ? 130 : 90;
+      for (const b of this.bullets) {
+        if (b.owner === 1) {
+          const bDist = Math.hypot(b.x - this.p2.x, b.y - this.p2.y);
+          if (bDist < dodgeThreshold) {
+            moveX = -b.vy * 1.8;
+            moveY = b.vx * 1.8;
+          }
         }
       }
     }
@@ -295,11 +327,9 @@ export class TankBattle {
   draw() {
     this.ctx.save();
 
-    // Floor
     this.ctx.fillStyle = '#f8fafc';
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Subtle playful grid
     this.ctx.strokeStyle = '#e2e8f0';
     this.ctx.lineWidth = 1;
     for (let x = 0; x < this.width; x += 40) {
@@ -315,12 +345,10 @@ export class TankBattle {
       this.ctx.stroke();
     }
 
-    // Outer Wall
     this.ctx.strokeStyle = '#cbd5e1';
     this.ctx.lineWidth = 4;
     this.ctx.strokeRect(10, 10, this.width - 20, this.height - 20);
 
-    // Treads
     for (const tm of this.treadMarks) {
       this.ctx.save();
       this.ctx.translate(tm.x, tm.y);
@@ -331,7 +359,6 @@ export class TankBattle {
       this.ctx.restore();
     }
 
-    // Obstacles
     for (const obs of this.obstacles) {
       this.ctx.save();
       if (obs.steel) {
@@ -354,11 +381,9 @@ export class TankBattle {
       this.ctx.restore();
     }
 
-    // Tanks
     if (this.p1.alive) this.drawTank(this.p1);
     if (this.p2.alive) this.drawTank(this.p2);
 
-    // Bullets
     for (const b of this.bullets) {
       this.ctx.save();
       this.ctx.fillStyle = '#f59e0b';
@@ -368,7 +393,6 @@ export class TankBattle {
       this.ctx.restore();
     }
 
-    // Score Header
     this.drawScoreHUD();
 
     this.ctx.restore();
@@ -379,22 +403,18 @@ export class TankBattle {
     this.ctx.translate(tank.x, tank.y);
     this.ctx.rotate(tank.angle);
 
-    // Treads
     this.ctx.fillStyle = '#1e293b';
     this.ctx.fillRect(-tank.size, -tank.size + 2, tank.size * 2, 6);
     this.ctx.fillRect(-tank.size, tank.size - 8, tank.size * 2, 6);
 
-    // Body
     this.ctx.fillStyle = tank.color;
     this.ctx.beginPath();
     this.ctx.roundRect(-tank.size + 4, -tank.size + 6, (tank.size - 4) * 2, (tank.size - 6) * 2, 6);
     this.ctx.fill();
 
-    // Turret Barrel
     this.ctx.fillStyle = '#0f172a';
     this.ctx.fillRect(0, -3.5, tank.size + 8, 7);
 
-    // Turret Dome
     this.ctx.fillStyle = '#ffffff';
     this.ctx.beginPath();
     this.ctx.arc(0, 0, 8, 0, Math.PI * 2);

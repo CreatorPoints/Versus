@@ -1,15 +1,16 @@
 /**
  * VERSUS - Micro Soccer Mini-Game
- * Bouncy capsule physics, aerial jumps, flip kicks, goal celebrations!
+ * Bouncy capsule physics, aerial jumps, flip kicks, AI difficulties!
  */
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 
 export class MicroSoccer {
-  constructor(canvas, ctx, onGameOver) {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
+    this.difficulty = difficulty;
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -37,6 +38,11 @@ export class MicroSoccer {
       rotation: 0
     };
 
+    let p2Speed = 4.8;
+    if (this.difficulty === 'baby') p2Speed = 2.8;
+    else if (this.difficulty === 'hard') p2Speed = 6.0;
+    else if (this.difficulty === 'demon') p2Speed = 7.4;
+
     this.p1 = {
       x: 160,
       y: this.groundY - 25,
@@ -46,6 +52,7 @@ export class MicroSoccer {
       h: 46,
       radius: 14,
       color: '#0ea5e9',
+      speed: 4.8,
       isGrounded: true,
       flipAngle: 0,
       isFlipping: false
@@ -60,6 +67,7 @@ export class MicroSoccer {
       h: 46,
       radius: 14,
       color: '#f43f5e',
+      speed: p2Speed,
       isGrounded: true,
       flipAngle: 0,
       isFlipping: false
@@ -122,7 +130,7 @@ export class MicroSoccer {
   }
 
   updatePlayer(p, input, facing) {
-    const moveSpeed = 4.8;
+    const moveSpeed = p.speed;
     const jumpForce = -9.2;
     const gravity = 0.42;
 
@@ -169,7 +177,7 @@ export class MicroSoccer {
       this.ball.x = p.x + nx * minDist;
       this.ball.y = p.y + ny * minDist;
 
-      const kickPower = p.isFlipping ? 12 : 7.5;
+      const kickPower = p.isFlipping ? 12.5 : 7.5;
       this.ball.vx = nx * kickPower + p.vx * 0.6;
       this.ball.vy = ny * kickPower + p.vy * 0.6;
 
@@ -213,30 +221,51 @@ export class MicroSoccer {
   computeBotInput() {
     let moveX = 0;
     let jump = false;
+    let action = false;
 
     const dx = this.ball.x - this.p2.x;
-    if (dx < -15) moveX = -1;
-    if (dx > 15) moveX = 1;
-
-    if (Math.abs(dx) < 60 && this.ball.y < this.p2.y - 20) {
-      jump = true;
+    
+    if (this.difficulty === 'baby') {
+      if (dx < -25) moveX = -1;
+      if (dx > 25) moveX = 1;
+      jump = Math.random() < 0.05;
+    } else if (this.difficulty === 'normal') {
+      if (dx < -15) moveX = -1;
+      if (dx > 15) moveX = 1;
+      if (Math.abs(dx) < 60 && this.ball.y < this.p2.y - 20) {
+        jump = true;
+        action = Math.random() < 0.4;
+      }
+    } else if (this.difficulty === 'hard') {
+      if (dx < -10) moveX = -1;
+      if (dx > 10) moveX = 1;
+      if (Math.abs(dx) < 70 && this.ball.y < this.p2.y - 15) {
+        jump = true;
+        action = true;
+      }
+    } else if (this.difficulty === 'demon') {
+      // Intercept aerial trajectory & bicycle kick with extreme aggression
+      const targetX = this.ball.x + this.ball.vx * 4;
+      moveX = targetX > this.p2.x ? 1 : -1;
+      if (Math.abs(this.ball.x - this.p2.x) < 80 && this.ball.y < this.p2.y) {
+        jump = true;
+        action = true;
+      }
     }
 
     return {
       x: moveX,
       y: jump ? -1 : 0,
-      action: jump && Math.random() < 0.4
+      action
     };
   }
 
   draw() {
     this.ctx.save();
 
-    // Stadium Sky
     this.ctx.fillStyle = '#e0f2fe';
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Lush Green Pitch
     this.ctx.fillStyle = '#22c55e';
     this.ctx.fillRect(0, this.groundY, this.width, this.height - this.groundY);
 
@@ -247,7 +276,6 @@ export class MicroSoccer {
     this.ctx.lineTo(this.width, this.groundY);
     this.ctx.stroke();
 
-    // Goal Posts
     this.ctx.strokeStyle = '#0ea5e9';
     this.ctx.lineWidth = 4;
     this.ctx.strokeRect(0, this.groundY - this.goalHeight, this.goalWidth, this.goalHeight);
@@ -259,7 +287,6 @@ export class MicroSoccer {
     this.ctx.fillStyle = 'rgba(244, 63, 94, 0.15)';
     this.ctx.fillRect(this.width - this.goalWidth, this.groundY - this.goalHeight, this.goalWidth, this.goalHeight);
 
-    // Ball
     this.ctx.save();
     this.ctx.translate(this.ball.x, this.ball.y);
     this.ctx.rotate(this.ball.rotation);
@@ -278,11 +305,9 @@ export class MicroSoccer {
     }
     this.ctx.restore();
 
-    // Players
     this.drawCapsulePlayer(this.p1);
     this.drawCapsulePlayer(this.p2);
 
-    // Score HUD
     this.drawScoreHUD();
 
     this.ctx.restore();

@@ -6,10 +6,11 @@ import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 
 export class SumoSpinners {
-  constructor(canvas, ctx, onGameOver) {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
+    this.difficulty = difficulty;
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -193,7 +194,17 @@ export class SumoSpinners {
   computeBotInput() {
     const distToCenter = Math.hypot(this.p2.x - this.centerX, this.p2.y - this.centerY);
     
-    if (distToCenter > this.arenaRadius * 0.7) {
+    if (this.difficulty === 'baby') {
+      // Wanders around aimlessly
+      return {
+        x: (Math.random() - 0.5) * 2,
+        y: (Math.random() - 0.5) * 2,
+        action: Math.random() < 0.05
+      };
+    }
+
+    const safeMargin = this.difficulty === 'demon' ? 0.88 : this.difficulty === 'hard' ? 0.75 : 0.65;
+    if (distToCenter > this.arenaRadius * safeMargin) {
       const dx = this.centerX - this.p2.x;
       const dy = this.centerY - this.p2.y;
       const dist = Math.hypot(dx, dy);
@@ -208,10 +219,15 @@ export class SumoSpinners {
     const dy = this.p1.y - this.p2.y;
     const dist = Math.hypot(dx, dy);
 
+    let shouldBoost = false;
+    if (this.difficulty === 'normal') shouldBoost = dist < 120 && Math.random() < 0.3;
+    else if (this.difficulty === 'hard') shouldBoost = dist < 160 && Math.random() < 0.6;
+    else if (this.difficulty === 'demon') shouldBoost = dist < 200;
+
     return {
       x: dx / dist,
       y: dy / dist,
-      action: dist < 120 && Math.random() < 0.4
+      action: shouldBoost
     };
   }
 
@@ -221,7 +237,6 @@ export class SumoSpinners {
     this.ctx.fillStyle = '#f1f5f9';
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Dynamic Floating Arena
     this.ctx.save();
     this.ctx.beginPath();
     this.ctx.arc(this.centerX, this.centerY, this.arenaRadius, 0, Math.PI * 2);

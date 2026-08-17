@@ -1,15 +1,16 @@
 /**
  * VERSUS - Pinball Duel Mini-Game
- * Bouncy bumper table, speed ramps, tilt impulse, vibrant arcade fun!
+ * Bouncy bumper table, speed ramps, AI difficulties!
  */
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 
 export class PinballDuel {
-  constructor(canvas, ctx, onGameOver) {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
+    this.difficulty = difficulty;
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -39,6 +40,11 @@ export class PinballDuel {
       { x: this.width * 0.65, y: this.height * 0.5, radius: 20, color: '#f43f5e', pulse: 0 }
     ];
 
+    let p2Speed = 6.5;
+    if (this.difficulty === 'baby') p2Speed = 3.5;
+    else if (this.difficulty === 'hard') p2Speed = 9.2;
+    else if (this.difficulty === 'demon') p2Speed = 12.0;
+
     this.p1 = {
       x: 60,
       y: this.height / 2,
@@ -54,7 +60,7 @@ export class PinballDuel {
       w: 16,
       h: 90,
       color: '#f43f5e',
-      speed: 6.5
+      speed: p2Speed
     };
 
     this.roundEnding = false;
@@ -67,14 +73,12 @@ export class PinballDuel {
       p2Input = this.computeBotInput();
     }
 
-    // Move Paddles
     this.p1.y += p1Input.y * this.p1.speed;
     this.p1.y = Math.max(this.p1.h / 2 + 10, Math.min(this.height - this.p1.h / 2 - 10, this.p1.y));
 
     this.p2.y += p2Input.y * this.p2.speed;
     this.p2.y = Math.max(this.p2.h / 2 + 10, Math.min(this.height - this.p2.h / 2 - 10, this.p2.y));
 
-    // Update Ball
     if (!this.roundEnding) {
       this.ball.x += this.ball.vx;
       this.ball.y += this.ball.vy;
@@ -82,7 +86,6 @@ export class PinballDuel {
       this.ball.trail.push({ x: this.ball.x, y: this.ball.y });
       if (this.ball.trail.length > 8) this.ball.trail.shift();
 
-      // Top / Bottom Bounce
       if (this.ball.y - this.ball.radius <= 12) {
         this.ball.y = 12 + this.ball.radius;
         this.ball.vy *= -1;
@@ -93,7 +96,6 @@ export class PinballDuel {
         sound.playBounce();
       }
 
-      // Bumpers Collision
       for (const b of this.bumpers) {
         if (b.pulse > 0) b.pulse -= 0.05;
         const dx = this.ball.x - b.x;
@@ -111,7 +113,6 @@ export class PinballDuel {
         }
       }
 
-      // P1 Paddle Collision
       if (
         this.ball.x - this.ball.radius <= this.p1.x + this.p1.w &&
         this.ball.x + this.ball.radius >= this.p1.x &&
@@ -125,7 +126,6 @@ export class PinballDuel {
         particles.spawnSparks(this.ball.x, this.ball.y, this.p1.color, 8);
       }
 
-      // P2 Paddle Collision
       if (
         this.ball.x + this.ball.radius >= this.p2.x &&
         this.ball.x - this.ball.radius <= this.p2.x + this.p2.w &&
@@ -139,7 +139,6 @@ export class PinballDuel {
         particles.spawnSparks(this.ball.x, this.ball.y, this.p2.color, 8);
       }
 
-      // Goal scoring
       if (this.ball.x < 10) {
         this.scoreGoal(2);
       } else if (this.ball.x > this.width - 10) {
@@ -171,24 +170,34 @@ export class PinballDuel {
 
   computeBotInput() {
     let moveY = 0;
-    if (this.ball.y < this.p2.y - 12) moveY = -1;
-    if (this.ball.y > this.p2.y + 12) moveY = 1;
+    const targetY = this.ball.y;
+
+    if (this.difficulty === 'baby') {
+      if (targetY < this.p2.y - 25) moveY = -1;
+      if (targetY > this.p2.y + 25) moveY = 1;
+    } else if (this.difficulty === 'normal') {
+      if (targetY < this.p2.y - 12) moveY = -1;
+      if (targetY > this.p2.y + 12) moveY = 1;
+    } else {
+      // Hard & Demon predictive tracking
+      const leadY = this.ball.y + this.ball.vy * 5;
+      if (leadY < this.p2.y - 5) moveY = -1;
+      if (leadY > this.p2.y + 5) moveY = 1;
+    }
+
     return { x: 0, y: moveY, action: false };
   }
 
   draw() {
     this.ctx.save();
 
-    // Clean Pinball Board Background
     this.ctx.fillStyle = '#f8fafc';
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Board Border
     this.ctx.strokeStyle = '#e2e8f0';
     this.ctx.lineWidth = 6;
     this.ctx.strokeRect(10, 10, this.width - 20, this.height - 20);
 
-    // Center divider
     this.ctx.strokeStyle = '#cbd5e1';
     this.ctx.lineWidth = 2;
     this.ctx.setLineDash([6, 6]);
@@ -198,7 +207,6 @@ export class PinballDuel {
     this.ctx.stroke();
     this.ctx.setLineDash([]);
 
-    // Bumpers
     for (const b of this.bumpers) {
       this.ctx.save();
       this.ctx.translate(b.x, b.y);
@@ -217,7 +225,6 @@ export class PinballDuel {
       this.ctx.restore();
     }
 
-    // Ball Trail
     for (let i = 0; i < this.ball.trail.length; i++) {
       const pt = this.ball.trail[i];
       const alpha = (i + 1) / this.ball.trail.length;
@@ -227,13 +234,11 @@ export class PinballDuel {
       this.ctx.fill();
     }
 
-    // Ball
     this.ctx.fillStyle = this.ball.color;
     this.ctx.beginPath();
     this.ctx.arc(this.ball.x, this.ball.y, this.ball.radius, 0, Math.PI * 2);
     this.ctx.fill();
 
-    // Paddles
     this.ctx.fillStyle = this.p1.color;
     this.ctx.beginPath();
     this.ctx.roundRect(this.p1.x, this.p1.y - this.p1.h / 2, this.p1.w, this.p1.h, 8);
@@ -244,7 +249,6 @@ export class PinballDuel {
     this.ctx.roundRect(this.p2.x, this.p2.y - this.p2.h / 2, this.p2.w, this.p2.h, 8);
     this.ctx.fill();
 
-    // Score HUD
     this.ctx.font = 'bold 24px "Fredoka", sans-serif';
     this.ctx.textAlign = 'center';
     this.ctx.fillStyle = '#0284c7';

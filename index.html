@@ -1,348 +1,355 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="description" content="VERSUS - 2-Player Web Game Suite! Play 1v1 against random online opponents from around the world, challenge friends with room codes, or play local same-screen battles." />
-  <title>VERSUS | 2-Player Realtime Party Games</title>
+  <meta name="description" content="VERSUS - 2-Player Realtime Arcade Suite. Play vs AI bots with multiple difficulties (Baby, Normal, Hard, Demon), Local 2P, or Online!" />
+  <title>VERSUS | 2-Player Party Games</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%23ffffff'/><circle cx='50' cy='50' r='42' fill='%23e0f2fe'/><text x='35%' y='62%' font-family='sans-serif' font-size='42' font-weight='bold' fill='%230ea5e9'>V</text><text x='65%' y='62%' font-family='sans-serif' font-size='42' font-weight='bold' fill='%23f43f5e'>S</text></svg>" />
   <link rel="stylesheet" href="/src/styles/index.css" />
 </head>
 <body>
   <div id="app">
-    <!-- Playful Ambient Floating Bubbles -->
+    <!-- Playful Ambient Bubbles -->
     <div class="fun-bubble bubble-1"></div>
     <div class="fun-bubble bubble-2"></div>
-    <div class="fun-bubble bubble-3"></div>
 
-    <!-- 1. LOBBY VIEW -->
+    <!-- 1. LOBBY VIEW (Game Grid on Left, Animated Detail Panel on Right) -->
     <main id="lobbyScreen" class="view-screen">
-      <div class="lobby-content">
-        <!-- Logo -->
-        <header class="logo-header">
-          <h1 class="logo-title">
-            <span class="ver">VER</span>
-            <span class="divider">
-              <svg width="42" height="42" viewBox="0 0 100 100" fill="none">
-                <path d="M50 5 L75 35 L55 35 L68 95 L25 55 L45 55 Z" fill="#f59e0b" stroke="#d97706" stroke-width="4" stroke-linejoin="round"/>
-              </svg>
-            </span>
-            <span class="sus">SUS</span>
-          </h1>
-          <p class="logo-subtitle">2-Player Realtime Party Arcade</p>
-        </header>
+      <div class="lobby-layout">
+        
+        <!-- Left Section: Header + 4-column Game Grid -->
+        <div class="lobby-left">
+          <header class="lobby-header-bar">
+            <h1 class="logo-title">
+              <span class="ver">VER</span>
+              <span class="divider">
+                <svg width="34" height="34" viewBox="0 0 100 100" fill="none">
+                  <path d="M50 5 L75 35 L55 35 L68 95 L25 55 L45 55 Z" fill="#f59e0b" stroke="#d97706" stroke-width="4" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span class="sus">SUS</span>
+            </h1>
 
-        <!-- Mode Select Cards (4 in a row) -->
-        <section class="mode-grid">
-          <!-- 1. Quick Match -->
-          <div id="btnQuickMatch" class="mode-card primary">
-            <div class="mode-icon-wrapper">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="2" y1="12" x2="22" y2="12"></line>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-              </svg>
+            <div class="header-actions">
+              <!-- Quick Theme Toggle Button -->
+              <button id="btnQuickTheme" class="icon-circle-btn" title="Toggle Light/Dark Theme">
+                <svg id="themeIconSun" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="5"></circle>
+                  <line x1="12" y1="1" x2="12" y2="3"></line>
+                  <line x1="12" y1="21" x2="12" y2="23"></line>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                  <line x1="1" y1="12" x2="3" y2="12"></line>
+                  <line x1="21" y1="12" x2="23" y2="12"></line>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg id="themeIconMoon" class="hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+              </button>
+
+              <!-- Sound Toggle Button -->
+              <button id="btnSoundToggle" class="icon-circle-btn" title="Toggle Sound">
+                <svg id="soundSvgOn" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                </svg>
+                <svg id="soundSvgOff" class="hidden" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                </svg>
+              </button>
+
+              <!-- Settings & Help Modal Button -->
+              <button id="btnOpenSettings" class="icon-circle-btn" title="Settings & How to Play">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+              </button>
             </div>
-            <h2 class="mode-title">Quick Duel</h2>
-            <p class="mode-desc">Find a random challenger online.</p>
-            <span class="mode-badge">Instant 1v1</span>
-          </div>
+          </header>
 
-          <!-- 2. Tournament -->
-          <div id="btnTournament" class="mode-card tournament">
-            <div class="mode-icon-wrapper">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
-                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
-                <path d="M4 22h16"></path>
-                <path d="M10 14.66V17c0 .55-.45 1-1 1H7"></path>
-                <path d="M14 14.66V17c0 .55.45 1 1 1h2"></path>
-                <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
-              </svg>
-            </div>
-            <h2 class="mode-title">Tournament</h2>
-            <p class="mode-desc">Best of 5 random mini-games.</p>
-            <span class="mode-badge">Best of 5</span>
-          </div>
-
-          <!-- 3. Local 2-Player -->
-          <div id="btnLocal2P" class="mode-card local">
-            <div class="mode-icon-wrapper">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="6" width="20" height="12" rx="6"></rect>
-                <line x1="6" y1="12" x2="10" y2="12"></line>
-                <line x1="8" y1="10" x2="8" y2="14"></line>
-                <circle cx="15" cy="12" r="1" fill="#e11d48"></circle>
-                <circle cx="18" cy="12" r="1" fill="#e11d48"></circle>
-              </svg>
-            </div>
-            <h2 class="mode-title">Local 2P</h2>
-            <p class="mode-desc">Play together on 1 screen.</p>
-            <span class="mode-badge">Same Device</span>
-          </div>
-
-          <!-- 4. Private Room -->
-          <div id="btnPrivateRoom" class="mode-card room">
-            <div class="mode-icon-wrapper">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 2l-2 2m-1.5 1.5L14 9l-3 3 2 2 3-3 3.5-3.5a2.121 2.121 0 0 0 0-3 2.121 2.121 0 0 0-3 0Z"></path>
-                <circle cx="7.5" cy="15.5" r="5.5"></circle>
-              </svg>
-            </div>
-            <h2 class="mode-title">Private Room</h2>
-            <p class="mode-desc">Share code with a friend.</p>
-            <span class="mode-badge">Room Code</span>
-          </div>
-        </section>
-
-        <!-- Mini-Game Selection Grid (4 Games Per Row) -->
-        <section class="game-select-section">
-          <div class="section-header">
-            <h3 class="section-title">
+          <!-- 4-Column Game Selection Grid -->
+          <section class="game-section">
+            <div class="section-label">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
               </svg>
-              Choose Mini-Game
-            </h3>
+              Select Game
+            </div>
+
+            <div id="gamePickerGrid" class="game-grid">
+              <!-- 1. Tank Battle -->
+              <div class="game-card selected" data-game="tank">
+                <div class="game-svg-preview">
+                  <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
+                    <rect width="200" height="100" rx="8" fill="#f1f5f9"/>
+                    <rect x="6" y="6" width="188" height="88" rx="6" stroke="#e2e8f0" stroke-width="2"/>
+                    <rect x="90" y="38" width="20" height="24" rx="4" fill="#f59e0b" stroke="#d97706" stroke-width="2"/>
+                    <rect x="25" y="42" width="28" height="18" rx="4" fill="#0ea5e9"/>
+                    <rect x="42" y="48" width="16" height="5" rx="2" fill="#0369a1"/>
+                    <circle cx="38" cy="51" r="5" fill="#ffffff"/>
+                    <rect x="147" y="42" width="28" height="18" rx="4" fill="#f43f5e"/>
+                    <rect x="142" y="48" width="16" height="5" rx="2" fill="#be123c"/>
+                    <circle cx="162" cy="51" r="5" fill="#ffffff"/>
+                    <path d="M58 50 L90 22 L142 50" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,4"/>
+                    <circle cx="100" cy="30" r="3.5" fill="#f59e0b"/>
+                  </svg>
+                </div>
+                <h4 class="game-card-name">Tank Battle</h4>
+                <span class="game-card-tag">Ricochet Bullets</span>
+              </div>
+
+              <!-- 2. Glow Hockey -->
+              <div class="game-card" data-game="hockey">
+                <div class="game-svg-preview">
+                  <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
+                    <rect width="200" height="100" rx="8" fill="#f0fdf4"/>
+                    <rect x="6" y="6" width="188" height="88" rx="6" stroke="#bbf7d0" stroke-width="2"/>
+                    <line x1="100" y1="8" x2="100" y2="92" stroke="#86efac" stroke-width="2" stroke-dasharray="4,4"/>
+                    <circle cx="100" cy="50" r="22" stroke="#86efac" stroke-width="2"/>
+                    <circle cx="45" cy="50" r="14" fill="#0ea5e9" stroke="#0284c7" stroke-width="3"/>
+                    <circle cx="45" cy="50" r="5" fill="#ffffff"/>
+                    <circle cx="155" cy="50" r="14" fill="#f43f5e" stroke="#e11d48" stroke-width="3"/>
+                    <circle cx="155" cy="50" r="5" fill="#ffffff"/>
+                    <circle cx="92" cy="50" r="7" fill="#1e293b"/>
+                  </svg>
+                </div>
+                <h4 class="game-card-name">Glow Hockey</h4>
+                <span class="game-card-tag">Smash Charge</span>
+              </div>
+
+              <!-- 3. Sumo Spinners -->
+              <div class="game-card" data-game="sumo">
+                <div class="game-svg-preview">
+                  <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
+                    <rect width="200" height="100" rx="8" fill="#f8fafc"/>
+                    <circle cx="100" cy="50" r="40" fill="#ffffff" stroke="#38bdf8" stroke-width="4"/>
+                    <g transform="translate(82, 50)">
+                      <circle cx="0" cy="0" r="10" fill="#0ea5e9"/>
+                      <circle cx="-12" cy="0" r="4" fill="#0284c7"/>
+                      <circle cx="6" cy="-10" r="4" fill="#0284c7"/>
+                      <circle cx="6" cy="10" r="4" fill="#0284c7"/>
+                    </g>
+                    <g transform="translate(118, 50)">
+                      <circle cx="0" cy="0" r="10" fill="#f43f5e"/>
+                      <circle cx="12" cy="0" r="4" fill="#e11d48"/>
+                      <circle cx="-6" cy="-10" r="4" fill="#e11d48"/>
+                      <circle cx="-6" cy="10" r="4" fill="#e11d48"/>
+                    </g>
+                    <path d="M100 40 L102 48 L110 50 L102 52 L100 60 L98 52 L90 50 L98 48 Z" fill="#f59e0b"/>
+                  </svg>
+                </div>
+                <h4 class="game-card-name">Sumo Spinners</h4>
+                <span class="game-card-tag">Ring Out!</span>
+              </div>
+
+              <!-- 4. Quick Draw -->
+              <div class="game-card" data-game="draw">
+                <div class="game-svg-preview">
+                  <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
+                    <rect width="200" height="100" rx="8" fill="#fffbeb"/>
+                    <path d="M0 75 Q 50 65 100 75 T 200 70 L200 100 L0 100 Z" fill="#fef3c7"/>
+                    <circle cx="100" cy="30" r="14" fill="#fde68a"/>
+                    <g transform="translate(45, 60)">
+                      <circle cx="0" cy="-12" r="6" fill="#0284c7"/>
+                      <rect x="-8" y="-14" width="16" height="3" rx="1.5" fill="#0f172a"/>
+                      <path d="M-6 0 L6 0 L3 16 L-3 16 Z" fill="#0ea5e9"/>
+                      <rect x="4" y="2" width="10" height="3" fill="#0f172a"/>
+                    </g>
+                    <g transform="translate(155, 60) scale(-1, 1)">
+                      <circle cx="0" cy="-12" r="6" fill="#e11d48"/>
+                      <rect x="-8" y="-14" width="16" height="3" rx="1.5" fill="#0f172a"/>
+                      <path d="M-6 0 L6 0 L3 16 L-3 16 Z" fill="#f43f5e"/>
+                      <rect x="4" y="2" width="10" height="3" fill="#0f172a"/>
+                    </g>
+                    <rect x="84" y="42" width="32" height="16" rx="8" fill="#f59e0b"/>
+                    <text x="100" y="54" font-family="sans-serif" font-size="10" font-weight="900" fill="#ffffff" text-anchor="middle">FIRE!</text>
+                  </svg>
+                </div>
+                <h4 class="game-card-name">Quick Draw</h4>
+                <span class="game-card-tag">Reflex Duel</span>
+              </div>
+
+              <!-- 5. Micro Soccer -->
+              <div class="game-card" data-game="soccer">
+                <div class="game-svg-preview">
+                  <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
+                    <rect width="200" height="100" rx="8" fill="#ecfdf5"/>
+                    <line x1="0" y1="78" x2="200" y2="78" stroke="#10b981" stroke-width="3"/>
+                    <rect x="8" y="42" width="16" height="36" fill="none" stroke="#0ea5e9" stroke-width="2"/>
+                    <g transform="translate(65, 52) rotate(-35)">
+                      <rect x="-8" y="-14" width="16" height="28" rx="8" fill="#0ea5e9"/>
+                      <rect x="-2" y="-10" width="8" height="4" fill="#ffffff"/>
+                    </g>
+                    <g transform="translate(145, 64)">
+                      <rect x="-8" y="-14" width="16" height="28" rx="8" fill="#f43f5e"/>
+                      <rect x="-6" y="-10" width="8" height="4" fill="#ffffff"/>
+                    </g>
+                    <circle cx="102" cy="40" r="7" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"/>
+                  </svg>
+                </div>
+                <h4 class="game-card-name">Micro Soccer</h4>
+                <span class="game-card-tag">Bicycle Kick</span>
+              </div>
+
+              <!-- 6. Blade Clash -->
+              <div class="game-card" data-game="blade">
+                <div class="game-svg-preview">
+                  <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
+                    <rect width="200" height="100" rx="8" fill="#faf5ff"/>
+                    <line x1="0" y1="75" x2="200" y2="75" stroke="#c084fc" stroke-width="3"/>
+                    <g transform="translate(60, 60)">
+                      <rect x="-7" y="-20" width="14" height="35" rx="4" fill="#0ea5e9"/>
+                      <rect x="4" y="-12" width="24" height="4" rx="2" fill="#38bdf8"/>
+                    </g>
+                    <g transform="translate(140, 60) scale(-1,1)">
+                      <rect x="-7" y="-20" width="14" height="35" rx="4" fill="#f43f5e"/>
+                      <rect x="4" y="-12" width="24" height="4" rx="2" fill="#fb7185"/>
+                    </g>
+                    <circle cx="100" cy="50" r="6" fill="#f59e0b"/>
+                  </svg>
+                </div>
+                <h4 class="game-card-name">Blade Clash</h4>
+                <span class="game-card-tag">Parry & Strike</span>
+              </div>
+
+              <!-- 7. Micro Race -->
+              <div class="game-card" data-game="race">
+                <div class="game-svg-preview">
+                  <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
+                    <rect width="200" height="100" rx="8" fill="#f0fdf4"/>
+                    <rect x="14" y="14" width="172" height="72" rx="20" fill="#334155"/>
+                    <rect x="50" y="36" width="100" height="28" rx="10" fill="#10b981"/>
+                    <line x1="100" y1="64" x2="100" y2="86" stroke="#ffffff" stroke-width="4" stroke-dasharray="3,3"/>
+                    <rect x="75" y="68" width="16" height="10" rx="3" fill="#0ea5e9"/>
+                    <rect x="110" y="68" width="16" height="10" rx="3" fill="#f43f5e"/>
+                  </svg>
+                </div>
+                <h4 class="game-card-name">Micro Race</h4>
+                <span class="game-card-tag">Kart Drift</span>
+              </div>
+
+              <!-- 8. Pinball Duel -->
+              <div class="game-card" data-game="pinball">
+                <div class="game-svg-preview">
+                  <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
+                    <rect width="200" height="100" rx="8" fill="#f8fafc"/>
+                    <circle cx="100" cy="35" r="10" fill="#f59e0b"/>
+                    <circle cx="100" cy="65" r="10" fill="#f59e0b"/>
+                    <rect x="24" y="32" width="6" height="36" rx="3" fill="#0ea5e9"/>
+                    <rect x="170" y="32" width="6" height="36" rx="3" fill="#f43f5e"/>
+                    <circle cx="125" cy="50" r="5" fill="#ffd166"/>
+                  </svg>
+                </div>
+                <h4 class="game-card-name">Pinball Duel</h4>
+                <span class="game-card-tag">Bumper Bounce</span>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Right Section: Animated Game Detail & Mode Selector Side Panel -->
+        <aside id="gameSidePanel" class="side-panel">
+          <div class="panel-header">
+            <h2 id="panelGameTitle" class="panel-title">Tank Battle</h2>
+            <span id="panelGameTag" class="game-card-tag">Ricochet Bullets</span>
           </div>
 
-          <div id="gamePickerGrid" class="game-grid">
-            <!-- 1. Tank Battle -->
-            <div class="game-card selected" data-game="tank">
-              <div class="game-svg-preview">
-                <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
-                  <!-- Ground -->
-                  <rect width="200" height="100" rx="8" fill="#f1f5f9"/>
-                  <rect x="6" y="6" width="188" height="88" rx="6" stroke="#e2e8f0" stroke-width="2"/>
-                  <!-- Center Crate -->
-                  <rect x="90" y="38" width="20" height="24" rx="4" fill="#f59e0b" stroke="#d97706" stroke-width="2"/>
-                  <!-- P1 Tank (Cyan) -->
-                  <rect x="25" y="42" width="28" height="18" rx="4" fill="#0ea5e9"/>
-                  <rect x="42" y="48" width="16" height="5" rx="2" fill="#0369a1"/>
-                  <circle cx="38" cy="51" r="5" fill="#ffffff"/>
-                  <!-- P2 Tank (Red) -->
-                  <rect x="147" y="42" width="28" height="18" rx="4" fill="#f43f5e"/>
-                  <rect x="142" y="48" width="16" height="5" rx="2" fill="#be123c"/>
-                  <circle cx="162" cy="51" r="5" fill="#ffffff"/>
-                  <!-- Bouncy Bullet Path -->
-                  <path d="M58 50 L90 22 L142 50" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,4"/>
-                  <circle cx="100" cy="30" r="3.5" fill="#f59e0b"/>
-                </svg>
+          <!-- Live SVG Preview inside Side Panel -->
+          <div id="panelPreviewContainer" class="panel-preview">
+            <!-- Dynamically populated with the selected game's SVG -->
+          </div>
+
+          <p id="panelGameDesc" class="panel-desc">
+            Drive your combat tank, bounce bullets off walls, smash obstacles, and eliminate your opponent before they hit you!
+          </p>
+
+          <!-- Select Game Mode -->
+          <div class="panel-subheading">Choose Game Mode</div>
+          <div class="mode-pills-list">
+            <!-- 1. AI Battle -->
+            <div class="mode-pill active" data-mode="ai">
+              <span class="mode-pill-icon">🤖</span>
+              <div class="mode-pill-info">
+                <span class="mode-pill-name">VS AI Bot</span>
+                <span class="mode-pill-hint">Practice against smart computer AI</span>
               </div>
-              <h4 class="game-card-name">Tank Battle</h4>
-              <span class="game-card-tag">Ricochet Action</span>
             </div>
 
-            <!-- 2. Glow Hockey -->
-            <div class="game-card" data-game="hockey">
-              <div class="game-svg-preview">
-                <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
-                  <!-- Rink -->
-                  <rect width="200" height="100" rx="8" fill="#f0fdf4"/>
-                  <rect x="6" y="6" width="188" height="88" rx="6" stroke="#bbf7d0" stroke-width="2"/>
-                  <!-- Center Line & Circle -->
-                  <line x1="100" y1="8" x2="100" y2="92" stroke="#86efac" stroke-width="2" stroke-dasharray="4,4"/>
-                  <circle cx="100" cy="50" r="22" stroke="#86efac" stroke-width="2"/>
-                  <!-- P1 Mallet -->
-                  <circle cx="45" cy="50" r="14" fill="#0ea5e9" stroke="#0284c7" stroke-width="3"/>
-                  <circle cx="45" cy="50" r="5" fill="#ffffff"/>
-                  <!-- P2 Mallet -->
-                  <circle cx="155" cy="50" r="14" fill="#f43f5e" stroke="#e11d48" stroke-width="3"/>
-                  <circle cx="155" cy="50" r="5" fill="#ffffff"/>
-                  <!-- Puck -->
-                  <circle cx="92" cy="50" r="7" fill="#1e293b"/>
-                  <path d="M60 50 Q 80 40 92 50" stroke="#0ea5e9" stroke-width="2" stroke-dasharray="2,2"/>
-                </svg>
+            <!-- 2. Local 2-Player -->
+            <div class="mode-pill" data-mode="local">
+              <span class="mode-pill-icon">👥</span>
+              <div class="mode-pill-info">
+                <span class="mode-pill-name">Local 2-Player</span>
+                <span class="mode-pill-hint">Same screen split keyboard / touch</span>
               </div>
-              <h4 class="game-card-name">Glow Hockey</h4>
-              <span class="game-card-tag">Fast Smash</span>
             </div>
 
-            <!-- 3. Sumo Spinners -->
-            <div class="game-card" data-game="sumo">
-              <div class="game-svg-preview">
-                <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
-                  <!-- Abyss & Floating Ring -->
-                  <rect width="200" height="100" rx="8" fill="#f8fafc"/>
-                  <circle cx="100" cy="50" r="40" fill="#ffffff" stroke="#38bdf8" stroke-width="4"/>
-                  <circle cx="100" cy="50" r="24" stroke="#e2e8f0" stroke-width="1.5"/>
-                  <!-- P1 Spinner -->
-                  <g transform="translate(82, 50)">
-                    <circle cx="0" cy="0" r="10" fill="#0ea5e9"/>
-                    <circle cx="-12" cy="0" r="4" fill="#0284c7"/>
-                    <circle cx="6" cy="-10" r="4" fill="#0284c7"/>
-                    <circle cx="6" cy="10" r="4" fill="#0284c7"/>
-                  </g>
-                  <!-- P2 Spinner -->
-                  <g transform="translate(118, 50)">
-                    <circle cx="0" cy="0" r="10" fill="#f43f5e"/>
-                    <circle cx="12" cy="0" r="4" fill="#e11d48"/>
-                    <circle cx="-6" cy="-10" r="4" fill="#e11d48"/>
-                    <circle cx="-6" cy="10" r="4" fill="#e11d48"/>
-                  </g>
-                  <!-- Clash Spark -->
-                  <path d="M100 40 L102 48 L110 50 L102 52 L100 60 L98 52 L90 50 L98 48 Z" fill="#f59e0b"/>
-                </svg>
+            <!-- 3. Tournament Mode -->
+            <div class="mode-pill" data-mode="tournament">
+              <span class="mode-pill-icon">🏆</span>
+              <div class="mode-pill-info">
+                <span class="mode-pill-name">Tournament Cup</span>
+                <span class="mode-pill-hint">Best of 5 random games</span>
               </div>
-              <h4 class="game-card-name">Sumo Spinners</h4>
-              <span class="game-card-tag">Ring Out!</span>
             </div>
 
-            <!-- 4. Quick Draw -->
-            <div class="game-card" data-game="draw">
-              <div class="game-svg-preview">
-                <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
-                  <!-- Desert Canyon -->
-                  <rect width="200" height="100" rx="8" fill="#fffbeb"/>
-                  <path d="M0 75 Q 50 65 100 75 T 200 70 L200 100 L0 100 Z" fill="#fef3c7"/>
-                  <!-- Sun -->
-                  <circle cx="100" cy="30" r="14" fill="#fde68a"/>
-                  <!-- P1 Duelist -->
-                  <g transform="translate(45, 60)">
-                    <circle cx="0" cy="-12" r="6" fill="#0284c7"/>
-                    <rect x="-8" y="-14" width="16" height="3" rx="1.5" fill="#0f172a"/>
-                    <path d="M-6 0 L6 0 L3 16 L-3 16 Z" fill="#0ea5e9"/>
-                    <rect x="4" y="2" width="10" height="3" fill="#0f172a"/>
-                  </g>
-                  <!-- P2 Duelist -->
-                  <g transform="translate(155, 60) scale(-1, 1)">
-                    <circle cx="0" cy="-12" r="6" fill="#e11d48"/>
-                    <rect x="-8" y="-14" width="16" height="3" rx="1.5" fill="#0f172a"/>
-                    <path d="M-6 0 L6 0 L3 16 L-3 16 Z" fill="#f43f5e"/>
-                    <rect x="4" y="2" width="10" height="3" fill="#0f172a"/>
-                  </g>
-                  <!-- BANG Badge -->
-                  <rect x="84" y="42" width="32" height="16" rx="8" fill="#f59e0b"/>
-                  <text x="100" y="54" font-family="sans-serif" font-size="10" font-weight="900" fill="#ffffff" text-anchor="middle">FIRE!</text>
-                </svg>
+            <!-- 4. Private Room -->
+            <div class="mode-pill" data-mode="room">
+              <span class="mode-pill-icon">🔑</span>
+              <div class="mode-pill-info">
+                <span class="mode-pill-name">Private Room</span>
+                <span class="mode-pill-hint">Play with friends via room code</span>
               </div>
-              <h4 class="game-card-name">Quick Draw</h4>
-              <span class="game-card-tag">Reflex Duel</span>
             </div>
 
-            <!-- 5. Micro Soccer -->
-            <div class="game-card" data-game="soccer">
-              <div class="game-svg-preview">
-                <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
-                  <!-- Pitch -->
-                  <rect width="200" height="100" rx="8" fill="#ecfdf5"/>
-                  <line x1="0" y1="78" x2="200" y2="78" stroke="#10b981" stroke-width="3"/>
-                  <!-- Goal Post Left -->
-                  <rect x="8" y="42" width="16" height="36" fill="none" stroke="#0ea5e9" stroke-width="2"/>
-                  <!-- P1 Capsule (Bicycle jump) -->
-                  <g transform="translate(65, 52) rotate(-35)">
-                    <rect x="-8" y="-14" width="16" height="28" rx="8" fill="#0ea5e9"/>
-                    <rect x="-2" y="-10" width="8" height="4" fill="#ffffff"/>
-                  </g>
-                  <!-- P2 Capsule -->
-                  <g transform="translate(145, 64)">
-                    <rect x="-8" y="-14" width="16" height="28" rx="8" fill="#f43f5e"/>
-                    <rect x="-6" y="-10" width="8" height="4" fill="#ffffff"/>
-                  </g>
-                  <!-- Ball in Air -->
-                  <circle cx="102" cy="40" r="7" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"/>
-                  <circle cx="102" cy="40" r="2.5" fill="#1e293b"/>
-                </svg>
+            <!-- 5. Online Quick Duel (WIP) -->
+            <div class="mode-pill" data-mode="quick_wip">
+              <span class="mode-pill-icon">🌐</span>
+              <div class="mode-pill-info">
+                <span class="mode-pill-name">Online Quick Duel</span>
+                <span class="mode-pill-hint">Global matchmaking</span>
               </div>
-              <h4 class="game-card-name">Micro Soccer</h4>
-              <span class="game-card-tag">Bicycle Kick</span>
-            </div>
-
-            <!-- 6. Blade Clash -->
-            <div class="game-card" data-game="blade">
-              <div class="game-svg-preview">
-                <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
-                  <!-- Dojo Ground -->
-                  <rect width="200" height="100" rx="8" fill="#faf5ff"/>
-                  <line x1="0" y1="75" x2="200" y2="75" stroke="#c084fc" stroke-width="3"/>
-                  <!-- P1 Blade Fighter -->
-                  <g transform="translate(60, 60)">
-                    <rect x="-7" y="-20" width="14" height="35" rx="4" fill="#0ea5e9"/>
-                    <rect x="4" y="-12" width="24" height="4" rx="2" fill="#38bdf8"/>
-                  </g>
-                  <!-- P2 Blade Fighter -->
-                  <g transform="translate(140, 60) scale(-1,1)">
-                    <rect x="-7" y="-20" width="14" height="35" rx="4" fill="#f43f5e"/>
-                    <rect x="4" y="-12" width="24" height="4" rx="2" fill="#fb7185"/>
-                  </g>
-                  <!-- Clash Spark -->
-                  <circle cx="100" cy="50" r="6" fill="#f59e0b"/>
-                  <line x1="90" y1="40" x2="110" y2="60" stroke="#ffd166" stroke-width="2.5"/>
-                  <line x1="110" y1="40" x2="90" y2="60" stroke="#ffd166" stroke-width="2.5"/>
-                </svg>
-              </div>
-              <h4 class="game-card-name">Blade Clash</h4>
-              <span class="game-card-tag">Parry & Dash</span>
-            </div>
-
-            <!-- 7. Micro Race -->
-            <div class="game-card" data-game="race">
-              <div class="game-svg-preview">
-                <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
-                  <!-- Racetrack -->
-                  <rect width="200" height="100" rx="8" fill="#f0fdf4"/>
-                  <rect x="14" y="14" width="172" height="72" rx="20" fill="#334155"/>
-                  <rect x="50" y="36" width="100" height="28" rx="10" fill="#10b981"/>
-                  <!-- Checkered Line -->
-                  <line x1="100" y1="64" x2="100" y2="86" stroke="#ffffff" stroke-width="4" stroke-dasharray="3,3"/>
-                  <!-- P1 Kart -->
-                  <rect x="75" y="68" width="16" height="10" rx="3" fill="#0ea5e9"/>
-                  <circle cx="83" cy="73" r="2.5" fill="#ffffff"/>
-                  <!-- P2 Kart -->
-                  <rect x="110" y="68" width="16" height="10" rx="3" fill="#f43f5e"/>
-                  <circle cx="118" cy="73" r="2.5" fill="#ffffff"/>
-                </svg>
-              </div>
-              <h4 class="game-card-name">Micro Race</h4>
-              <span class="game-card-tag">Kart Drift</span>
-            </div>
-
-            <!-- 8. Pinball Duel -->
-            <div class="game-card" data-game="pinball">
-              <div class="game-svg-preview">
-                <svg width="100%" height="100%" viewBox="0 0 200 100" fill="none">
-                  <!-- Pinball Table -->
-                  <rect width="200" height="100" rx="8" fill="#f8fafc"/>
-                  <rect x="8" y="8" width="184" height="84" rx="6" stroke="#e2e8f0" stroke-width="2"/>
-                  <!-- Bumpers -->
-                  <circle cx="100" cy="35" r="10" fill="#f59e0b"/>
-                  <circle cx="100" cy="35" r="4" fill="#ffffff"/>
-                  <circle cx="100" cy="65" r="10" fill="#f59e0b"/>
-                  <circle cx="100" cy="65" r="4" fill="#ffffff"/>
-                  <!-- P1 Paddle -->
-                  <rect x="24" y="32" width="6" height="36" rx="3" fill="#0ea5e9"/>
-                  <!-- P2 Paddle -->
-                  <rect x="170" y="32" width="6" height="36" rx="3" fill="#f43f5e"/>
-                  <!-- Ball -->
-                  <circle cx="125" cy="50" r="5" fill="#ffd166"/>
-                </svg>
-              </div>
-              <h4 class="game-card-name">Pinball Duel</h4>
-              <span class="game-card-tag">Bumper Bounce</span>
+              <span class="wip-badge">WIP</span>
             </div>
           </div>
-        </section>
 
-        <!-- Footer / Utility Actions -->
-        <footer class="lobby-footer">
-          <button id="btnToggleSound" class="fun-btn" title="Toggle Sound">
-            <span id="soundIcon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-              </svg>
-            </span>
-            <span id="soundText">Sound ON</span>
-          </button>
-          <button id="btnControlsGuide" class="fun-btn" title="Controls Guide">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          <!-- AI Difficulty Selector (Visible when mode is 'ai') -->
+          <div id="aiDifficultySection" class="difficulty-selector">
+            <div class="panel-subheading">AI Difficulty Level</div>
+            <div class="difficulty-grid">
+              <div class="diff-btn baby" data-diff="baby">
+                <span class="diff-icon">🍼</span>
+                <span class="diff-name">Baby</span>
+              </div>
+              <div class="diff-btn normal active" data-diff="normal">
+                <span class="diff-icon">⚡</span>
+                <span class="diff-name">Normal</span>
+              </div>
+              <div class="diff-btn hard" data-diff="hard">
+                <span class="diff-icon">🔥</span>
+                <span class="diff-name">Hard</span>
+              </div>
+              <div class="diff-btn demon" data-diff="demon">
+                <span class="diff-icon">😈</span>
+                <span class="diff-name">Demon</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Play Button -->
+          <button id="btnPlayNow" class="btn-play-game">
+            <span>PLAY NOW</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
-            <span>How to Play</span>
           </button>
-        </footer>
+        </aside>
+
       </div>
     </main>
 
@@ -375,7 +382,7 @@
 
       <canvas id="gameCanvas" width="800" height="500"></canvas>
 
-      <!-- On-Screen Virtual Controls (Mobile / Tablet) -->
+      <!-- On-Screen Mobile Virtual Controls -->
       <div id="mobileControls" class="mobile-controls hidden">
         <div id="touchStick" class="touch-stick-zone">
           <div id="touchThumb" class="touch-stick-thumb"></div>
@@ -409,7 +416,7 @@
         <p style="color: var(--text-secondary); font-size: 0.95rem; font-weight: 700;">Share room code with your friend to duel directly.</p>
         
         <div style="display: flex; gap: 8px; width: 100%; margin: 8px 0;">
-          <input id="roomCodeInput" type="text" placeholder="ROOM CODE (e.g. VS99)" maxlength="6" style="flex: 1; padding: 14px; background: #f8fafc; border: 2px solid var(--border-active); color: #1e293b; border-radius: var(--radius-md); font-family: 'Fredoka', monospace; font-size: 1.25rem; font-weight: 600; text-align: center; text-transform: uppercase;" />
+          <input id="roomCodeInput" type="text" placeholder="ROOM CODE (e.g. VS99)" maxlength="6" style="flex: 1; padding: 14px; background: var(--bg-input); border: 2px solid var(--border-active); color: var(--text-primary); border-radius: var(--radius-md); font-family: 'Fredoka', monospace; font-size: 1.25rem; font-weight: 600; text-align: center; text-transform: uppercase;" />
         </div>
 
         <div class="modal-btn-row">
@@ -420,10 +427,33 @@
       </div>
     </div>
 
-    <!-- Controls Guide Modal -->
-    <div id="guideModal" class="modal-backdrop hidden">
+    <!-- Settings Modal with Dark Theme & How to Play -->
+    <div id="settingsModal" class="modal-backdrop hidden">
       <div class="modal-card" style="max-width: 480px;">
-        <h2 class="modal-title">How to Play</h2>
+        <h2 class="modal-title">Settings</h2>
+
+        <div class="settings-group">
+          <!-- Theme Setting -->
+          <div class="settings-row">
+            <span class="settings-label">Color Theme</span>
+            <div class="theme-toggle-btn-group">
+              <button id="optThemeLight" class="theme-opt-btn active">☀️ Light</button>
+              <button id="optThemeDark" class="theme-opt-btn">🌙 Dark</button>
+            </div>
+          </div>
+
+          <!-- Sound Setting -->
+          <div class="settings-row">
+            <span class="settings-label">Sound Effects</span>
+            <div class="theme-toggle-btn-group">
+              <button id="optSoundOn" class="theme-opt-btn active">🔊 On</button>
+              <button id="optSoundOff" class="theme-opt-btn">🔇 Off</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls Guide -->
+        <h3 class="panel-subheading" style="margin-top: 4px; text-align: left; width: 100%;">Controls Guide</h3>
         <div class="guide-list">
           <div class="guide-row">
             <span style="color: var(--p1-blue); font-weight: 800;">Player 1 (Blue):</span>
@@ -438,7 +468,20 @@
             <span>Virtual Joystick & Action Button</span>
           </div>
         </div>
-        <button id="btnCloseGuideModal" class="primary-fun-btn" style="width: 100%;">Let's Play!</button>
+
+        <button id="btnCloseSettingsModal" class="primary-fun-btn" style="width: 100%;">Done</button>
+      </div>
+    </div>
+
+    <!-- WIP Modal for Online Quick Duel -->
+    <div id="wipModal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div style="font-size: 3.5rem;">🚧</div>
+        <h2 class="modal-title">Work In Progress</h2>
+        <p style="color: var(--text-secondary); font-size: 0.95rem; font-weight: 700; line-height: 1.4;">
+          Online Quick Match is currently undergoing server infrastructure upgrades! In the meantime, you can test your skills against our smart <strong>AI Bots (Baby to Demon)</strong> or play <strong>Local 2-Player</strong>!
+        </p>
+        <button id="btnCloseWipModal" class="primary-fun-btn" style="width: 100%;">Got It!</button>
       </div>
     </div>
 

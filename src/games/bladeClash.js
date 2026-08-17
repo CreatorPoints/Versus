@@ -1,15 +1,16 @@
 /**
  * VERSUS - Blade Clash Mini-Game
- * Dash strikes, perfect parry windows, metallic spark impacts, health bars!
+ * Dash strikes, perfect parry windows, metallic spark impacts, AI difficulties!
  */
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 
 export class BladeClash {
-  constructor(canvas, ctx, onGameOver) {
+  constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
     this.canvas = canvas;
     this.ctx = ctx;
     this.onGameOver = onGameOver;
+    this.difficulty = difficulty;
     this.width = canvas.width;
     this.height = canvas.height;
 
@@ -24,6 +25,11 @@ export class BladeClash {
   }
 
   resetRound() {
+    let p2Speed = 5.2;
+    if (this.difficulty === 'baby') p2Speed = 3.2;
+    else if (this.difficulty === 'hard') p2Speed = 6.4;
+    else if (this.difficulty === 'demon') p2Speed = 7.8;
+
     this.p1 = {
       x: 180,
       y: this.groundY,
@@ -32,6 +38,7 @@ export class BladeClash {
       maxHp: 3,
       facing: 1,
       color: '#0ea5e9',
+      speed: 5.2,
       state: 'IDLE',
       stateTimer: 0,
       parryWindow: 0,
@@ -47,6 +54,7 @@ export class BladeClash {
       maxHp: 3,
       facing: -1,
       color: '#f43f5e',
+      speed: p2Speed,
       state: 'IDLE',
       stateTimer: 0,
       parryWindow: 0,
@@ -110,7 +118,7 @@ export class BladeClash {
       return;
     }
 
-    const speed = 5.2;
+    const speed = w.speed;
     w.vx = input.x * speed;
     w.x += w.vx;
     w.x = Math.max(50, Math.min(this.width - 50, w.x));
@@ -225,13 +233,38 @@ export class BladeClash {
     let action = false;
     let down = false;
 
-    if (this.p1.state === 'ATTACK' && dist < 120 && Math.random() < 0.6) {
-      action = true;
-      down = true;
-    } else if (dist > 90) {
-      moveX = this.p1.x > this.p2.x ? 1 : -1;
-    } else if (dist <= 90) {
-      if (Math.random() < 0.25) {
+    if (this.difficulty === 'baby') {
+      moveX = (Math.random() - 0.5) * 1.5;
+      action = Math.random() < 0.05;
+    } else if (this.difficulty === 'normal') {
+      if (this.p1.state === 'ATTACK' && dist < 120 && Math.random() < 0.4) {
+        action = true;
+        down = true;
+      } else if (dist > 90) {
+        moveX = this.p1.x > this.p2.x ? 1 : -1;
+      } else if (dist <= 90) {
+        action = Math.random() < 0.25;
+      }
+    } else if (this.difficulty === 'hard') {
+      if (this.p1.state === 'ATTACK' && dist < 130 && Math.random() < 0.75) {
+        action = true;
+        down = true; // High skill parry
+      } else if (dist > 80) {
+        moveX = this.p1.x > this.p2.x ? 1 : -1;
+      } else {
+        action = Math.random() < 0.5;
+      }
+    } else if (this.difficulty === 'demon') {
+      // Demon frame-perfect parry & instantaneous counter-attack
+      if (this.p1.state === 'ATTACK' && dist < 140) {
+        action = true;
+        down = true;
+      } else if (this.p1.state === 'STUN') {
+        moveX = this.p1.x > this.p2.x ? 1 : -1;
+        action = true;
+      } else if (dist > 70) {
+        moveX = this.p1.x > this.p2.x ? 1 : -1;
+      } else {
         action = true;
       }
     }
@@ -247,7 +280,6 @@ export class BladeClash {
   draw() {
     this.ctx.save();
 
-    // Clean Dojo Background
     const bg = this.ctx.createLinearGradient(0, 0, 0, this.height);
     bg.addColorStop(0, '#f8fafc');
     bg.addColorStop(0.7, '#f1f5f9');
@@ -255,7 +287,6 @@ export class BladeClash {
     this.ctx.fillStyle = bg;
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Floor
     this.ctx.fillStyle = '#cbd5e1';
     this.ctx.fillRect(0, this.groundY, this.width, this.height - this.groundY);
     this.ctx.strokeStyle = '#94a3b8';
@@ -284,23 +315,19 @@ export class BladeClash {
       this.ctx.translate((Math.random() - 0.5) * 4, 0);
     }
 
-    // Shadow
     this.ctx.fillStyle = 'rgba(15, 23, 42, 0.15)';
     this.ctx.beginPath();
     this.ctx.ellipse(0, 0, 18, 6, 0, 0, Math.PI * 2);
     this.ctx.fill();
 
-    // Body
     this.ctx.fillStyle = w.color;
     this.ctx.beginPath();
     this.ctx.roundRect(-10, -42, 20, 42, 6);
     this.ctx.fill();
 
-    // Visor
     this.ctx.fillStyle = '#ffffff';
     this.ctx.fillRect(2, -36, 8, 4);
 
-    // Blade
     this.ctx.save();
     this.ctx.translate(8, -20);
     this.ctx.rotate(w.swordAngle);
@@ -308,7 +335,6 @@ export class BladeClash {
     this.ctx.fillRect(0, -3, 34, 6);
     this.ctx.restore();
 
-    // HP Indicators
     this.ctx.restore();
     this.ctx.save();
     this.ctx.translate(w.x, w.y - 55);
