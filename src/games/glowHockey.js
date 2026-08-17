@@ -1,9 +1,10 @@
 /**
  * VERSUS - Glow Air Hockey Mini-Game
- * High tempo arcade physics, power smash shots, AI difficulties!
+ * Fluid Mouse Tracking + Keyboard (WASD / Arrows) + Touch, Power Smash, AI Difficulties!
  */
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
+import { input } from '../engine/input.js';
 
 export class GlowHockey {
   constructor(canvas, ctx, onGameOver, difficulty = 'normal') {
@@ -34,7 +35,7 @@ export class GlowHockey {
       radius: 14,
       color: '#1e293b',
       trail: [],
-      maxSpeed: 14.5
+      maxSpeed: 15.0
     };
 
     let p2Speed = 6.8;
@@ -49,7 +50,7 @@ export class GlowHockey {
       vy: 0,
       radius: 26,
       color: '#0ea5e9',
-      speed: 6.8,
+      speed: 7.2,
       charge: 0,
       isCharging: false
     };
@@ -76,19 +77,20 @@ export class GlowHockey {
       p2Input = this.computeBotInput();
     }
 
-    this.updatePaddle(this.p1, p1Input, 20, this.width / 2 - 30);
-    this.updatePaddle(this.p2, p2Input, this.width / 2 + 30, this.width - 20);
+    this.updateP1Paddle(p1Input, 20, this.width / 2 - 25);
+    this.updateP2Paddle(p2Input, this.width / 2 + 25, this.width - 20);
 
     if (!this.roundEnding) {
       this.puck.x += this.puck.vx;
       this.puck.y += this.puck.vy;
 
-      this.puck.vx *= 0.992;
-      this.puck.vy *= 0.992;
+      this.puck.vx *= 0.993;
+      this.puck.vy *= 0.993;
 
       this.puck.trail.push({ x: this.puck.x, y: this.puck.y });
-      if (this.puck.trail.length > 10) this.puck.trail.shift();
+      if (this.puck.trail.length > 8) this.puck.trail.shift();
 
+      // Top & bottom wall bounces
       if (this.puck.y - this.puck.radius <= 12) {
         this.puck.y = 12 + this.puck.radius;
         this.puck.vy *= -1;
@@ -101,6 +103,7 @@ export class GlowHockey {
         particles.spawnSparks(this.puck.x, this.puck.y, '#f59e0b', 5);
       }
 
+      // Left goal & side walls
       if (this.puck.x - this.puck.radius <= 14) {
         if (this.puck.y >= this.goalY && this.puck.y <= this.goalY + this.goalSize) {
           this.scoreGoal(2);
@@ -112,6 +115,7 @@ export class GlowHockey {
         }
       }
 
+      // Right goal & side walls
       if (this.puck.x + this.puck.radius >= this.width - 14) {
         if (this.puck.y >= this.goalY && this.puck.y <= this.goalY + this.goalSize) {
           this.scoreGoal(1);
@@ -128,22 +132,59 @@ export class GlowHockey {
     }
   }
 
-  updatePaddle(paddle, input, minX, maxX) {
-    paddle.vx = input.x * paddle.speed;
-    paddle.vy = input.y * paddle.speed;
+  updateP1Paddle(p1Input, minX, maxX) {
+    const prevX = this.p1.x;
+    const prevY = this.p1.y;
 
-    paddle.x += paddle.vx;
-    paddle.y += paddle.vy;
+    const hasKeyboardMove = Math.abs(p1Input.x) > 0.1 || Math.abs(p1Input.y) > 0.1;
+    const isMouseRecent = (performance.now() - input.mouse.lastMoveTime) < 3000;
 
-    paddle.x = Math.max(minX + paddle.radius, Math.min(maxX - paddle.radius, paddle.x));
-    paddle.y = Math.max(14 + paddle.radius, Math.min(this.height - 14 - paddle.radius, paddle.y));
-
-    if (input.action) {
-      paddle.charge = Math.min(paddle.charge + 0.05, 1);
-      paddle.isCharging = true;
+    if (hasKeyboardMove || !isMouseRecent) {
+      // Keyboard / Gamepad movement
+      this.p1.vx = p1Input.x * this.p1.speed;
+      this.p1.vy = p1Input.y * this.p1.speed;
+      this.p1.x += this.p1.vx;
+      this.p1.y += this.p1.vy;
     } else {
-      paddle.charge = 0;
-      paddle.isCharging = false;
+      // Direct high-precision Mouse tracking
+      const targetX = Math.max(minX + this.p1.radius, Math.min(maxX - this.p1.radius, input.mouse.canvasX));
+      const targetY = Math.max(14 + this.p1.radius, Math.min(this.height - 14 - this.p1.radius, input.mouse.canvasY));
+      
+      this.p1.x += (targetX - this.p1.x) * 0.45;
+      this.p1.y += (targetY - this.p1.y) * 0.45;
+      this.p1.vx = this.p1.x - prevX;
+      this.p1.vy = this.p1.y - prevY;
+    }
+
+    this.p1.x = Math.max(minX + this.p1.radius, Math.min(maxX - this.p1.radius, this.p1.x));
+    this.p1.y = Math.max(14 + this.p1.radius, Math.min(this.height - 14 - this.p1.radius, this.p1.y));
+
+    // Action / Charge
+    if (p1Input.action || input.mouse.down) {
+      this.p1.charge = Math.min(this.p1.charge + 0.05, 1);
+      this.p1.isCharging = true;
+    } else {
+      this.p1.charge = 0;
+      this.p1.isCharging = false;
+    }
+  }
+
+  updateP2Paddle(p2Input, minX, maxX) {
+    this.p2.vx = p2Input.x * this.p2.speed;
+    this.p2.vy = p2Input.y * this.p2.speed;
+
+    this.p2.x += this.p2.vx;
+    this.p2.y += this.p2.vy;
+
+    this.p2.x = Math.max(minX + this.p2.radius, Math.min(maxX - this.p2.radius, this.p2.x));
+    this.p2.y = Math.max(14 + this.p2.radius, Math.min(this.height - 14 - this.p2.radius, this.p2.y));
+
+    if (p2Input.action) {
+      this.p2.charge = Math.min(this.p2.charge + 0.05, 1);
+      this.p2.isCharging = true;
+    } else {
+      this.p2.charge = 0;
+      this.p2.isCharging = false;
     }
   }
 
@@ -154,17 +195,17 @@ export class GlowHockey {
     const minDist = this.puck.radius + paddle.radius;
 
     if (dist < minDist) {
-      const nx = dx / dist;
-      const ny = dy / dist;
+      const nx = dx / (dist || 1);
+      const ny = dy / (dist || 1);
 
       this.puck.x = paddle.x + nx * minDist;
       this.puck.y = paddle.y + ny * minDist;
 
-      const boost = paddle.charge > 0.5 ? 1.7 : 1.15;
-      const speed = Math.max(Math.hypot(this.puck.vx, this.puck.vy), 5.5) * boost;
+      const boost = paddle.charge > 0.5 ? 1.75 : 1.18;
+      const speed = Math.max(Math.hypot(this.puck.vx, this.puck.vy), 5.8) * boost;
       
-      this.puck.vx = (nx * speed) + (paddle.vx * 0.4);
-      this.puck.vy = (ny * speed) + (paddle.vy * 0.4);
+      this.puck.vx = (nx * speed) + (paddle.vx * 0.45);
+      this.puck.vy = (ny * speed) + (paddle.vy * 0.45);
 
       const curSpeed = Math.hypot(this.puck.vx, this.puck.vy);
       if (curSpeed > this.puck.maxSpeed) {
@@ -235,13 +276,11 @@ export class GlowHockey {
         targetY = this.puck.y * 0.6 + this.height * 0.2;
       }
     } else if (this.difficulty === 'hard') {
-      // Intercept puck trajectory
       const leadTime = 6;
       targetX = Math.min(this.width - 40, Math.max(this.width / 2 + 40, this.puck.x + this.puck.vx * leadTime));
       targetY = this.puck.y + this.puck.vy * leadTime;
       action = Math.random() < 0.65;
     } else if (this.difficulty === 'demon') {
-      // Aggressive instant prediction
       targetX = Math.min(this.width - 30, Math.max(this.width / 2 + 30, this.puck.x + this.puck.vx * 4));
       targetY = this.puck.y + this.puck.vy * 4;
       action = true;
