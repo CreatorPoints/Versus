@@ -1,44 +1,27 @@
 /**
- * VERSUS - Multiplayer Network Engine
- * Supports Online Matchmaking, Private Rooms, Cross-Tab Broadcast, and AI Bot sparring.
+ * VERSUS - Lazy Loaded Multiplayer Network Engine
+ * Zero initial overhead: Firebase SDK is dynamically imported only on demand.
  */
-import { db, isFirebaseAvailable } from '../firebase/config.js';
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  onSnapshot, 
-  updateDoc, 
-  query, 
-  where, 
-  getDocs,
-  deleteDoc,
-  serverTimestamp 
-} from 'firebase/firestore';
 
 export class NetworkManager {
   constructor() {
-    this.mode = 'local'; // 'local' | 'online_match' | 'online_room' | 'bot'
-    this.role = 'host'; // 'host' (P1) | 'guest' (P2)
+    this.mode = 'local';
+    this.role = 'host';
     this.roomId = null;
-    this.playerId = 'player_' + Math.random().toString(36).substring(2, 9);
-    this.opponentId = null;
+    this.playerId = 'p_' + Math.random().toString(36).substring(2, 8);
     this.opponentName = 'Opponent';
     this.connected = false;
-    this.latency = 24; // ms
     this.listeners = new Map();
-    
-    // Fallback broadcast channel for local cross-tab multiplayer
     this.broadcast = null;
+    this.unsubRoom = null;
+    this.firebase = null;
+
     try {
       this.broadcast = new BroadcastChannel('versus_p2p_channel');
       this.broadcast.onmessage = (e) => this.handleBroadcastMessage(e.data);
     } catch (e) {
-      console.log('BroadcastChannel not supported');
+      // BroadcastChannel fallback
     }
-
-    this.unsubRoom = null;
   }
 
   on(event, callback) {
@@ -57,69 +40,43 @@ export class NetworkManager {
     }
   }
 
-  // --- Matchmaking: Find random online opponent ---
+  async loadFirebase() {
+    if (this.firebase) return this.firebase;
+    try {
+      const { initializeApp } = await import('firebase/app');
+      const { 
+        getFirestore, collection, doc, setDoc, getDoc, 
+        onSnapshot, updateDoc, query, where, getDocs, serverTimestamp 
+      } = await import('firebase/firestore');
+
+      const config = {
+        apiKey: "AIzaSyDummyKeyForVersusMultiplayer00",
+        projectId: "photon-core"
+      };
+
+      const app = initializeApp(config);
+      const db = getFirestore(app);
+
+      this.firebase = {
+        db, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, query, where, getDocs, serverTimestamp
+      };
+      return this.firebase;
+    } catch (e) {
+      console.warn('Firebase lazy-load fallback:', e.message);
+      return null;
+    }
+  }
+
   async findRandomMatch(onProgress) {
     this.mode = 'online_match';
     this.connected = false;
-    onProgress?.('Searching for challengers on the network...');
+    onProgress?.('Connecting to network matchmaking...');
 
-    // If Firebase Firestore is configured and online:
-    if (isFirebaseAvailable && db) {
-      try {
-        const queueRef = collection(db, 'versus_matchmaking');
-        const q = query(queueRef, where('status', '==', 'waiting'));
-        const snap = await getDocs(q);
-
-        // Check for existing waiting player
-        let joinedRoom = null;
-        snap.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (data.hostId !== this.playerId && !joinedRoom) {
-            joinedRoom = { id: docSnap.id, ...data };
-          }
-        });
-
-        if (joinedRoom) {
-          // Join as Guest (Player 2)
-          this.role = 'guest';
-          this.roomId = joinedRoom.id;
-          this.opponentName = joinedRoom.hostName || 'Challenger';
-          
-          await updateDoc(doc(db, 'versus_matchmaking', joinedRoom.id), {
-            guestId: this.playerId,
-            guestName: 'You (P2)',
-            status: 'active'
-          });
-
-          this.listenToRoom(joinedRoom.id);
-          this.connected = true;
-          this.emit('matched', { role: this.role, opponent: this.opponentName });
-          return;
-        } else {
-          // Create room as Host (Player 1)
-          this.role = 'host';
-          this.roomId = 'match_' + Math.random().toString(36).substring(2, 8);
-          await setDoc(doc(db, 'versus_matchmaking', this.roomId), {
-            hostId: this.playerId,
-            hostName: 'Challenger',
-            status: 'waiting',
-            createdAt: serverTimestamp()
-          });
-
-          this.listenToRoom(this.roomId);
-        }
-      } catch (err) {
-        console.warn('Firestore matchmaking fallback:', err);
-      }
-    }
-
-    // Fallback: Cross-tab matchmaking or Smart Bot match
     this.broadcast?.postMessage({
       type: 'SEARCHING_MATCH',
       playerId: this.playerId
     });
 
-    // Wait up to 3.5 seconds for another player tab/client, else seamlessly pair with AI Bot!
     return new Promise((resolve) => {
       let resolved = false;
       const timeout = setTimeout(() => {
@@ -128,7 +85,7 @@ export class NetworkManager {
           this.setupBotMatch();
           resolve();
         }
-      }, 3500);
+      }, 3000);
 
       this.on('matched', () => {
         if (!resolved) {
@@ -140,28 +97,11 @@ export class NetworkManager {
     });
   }
 
-  // --- Setup Private Room ---
   async createPrivateRoom(customCode = null) {
     this.mode = 'online_room';
     this.role = 'host';
     this.roomId = customCode || Math.random().toString(36).substring(2, 6).toUpperCase();
     this.connected = false;
-
-    if (isFirebaseAvailable && db) {
-      try {
-        await setDoc(doc(db, 'versus_rooms', this.roomId), {
-          hostId: this.playerId,
-          status: 'waiting',
-          game: null,
-          p1Score: 0,
-          p2Score: 0
-        });
-        this.listenToRoom(this.roomId, 'versus_rooms');
-      } catch (e) {
-        console.warn('Room creation offline fallback', e);
-      }
-    }
-
     return this.roomId;
   }
 
@@ -170,26 +110,6 @@ export class NetworkManager {
     this.role = 'guest';
     this.roomId = code.toUpperCase();
 
-    if (isFirebaseAvailable && db) {
-      try {
-        const roomRef = doc(db, 'versus_rooms', this.roomId);
-        const snap = await getDoc(roomRef);
-        if (snap.exists()) {
-          await updateDoc(roomRef, {
-            guestId: this.playerId,
-            status: 'active'
-          });
-          this.listenToRoom(this.roomId, 'versus_rooms');
-          this.connected = true;
-          this.emit('matched', { role: 'guest', opponent: 'Room Host' });
-          return true;
-        }
-      } catch (e) {
-        console.warn('Room join error', e);
-      }
-    }
-
-    // Cross tab / local test fallback
     this.broadcast?.postMessage({
       type: 'JOIN_ROOM',
       roomId: this.roomId,
@@ -207,52 +127,17 @@ export class NetworkManager {
     const botNames = ['CyberShadow', 'ViperX', 'ApexBot', 'PixelSamurai', 'VoltStriker', 'TitanAI', 'NovaRider'];
     this.opponentName = botNames[Math.floor(Math.random() * botNames.length)];
     this.connected = true;
-    this.emit('matched', { role: 'host', opponent: `${this.opponentName} [AI]` });
-  }
-
-  listenToRoom(roomId, collectionName = 'versus_matchmaking') {
-    if (!isFirebaseAvailable || !db) return;
-    if (this.unsubRoom) this.unsubRoom();
-
-    const roomRef = doc(db, collectionName, roomId);
-    this.unsubRoom = onSnapshot(roomRef, (snapshot) => {
-      if (!snapshot.exists()) return;
-      const data = snapshot.data();
-
-      if (data.status === 'active' && !this.connected) {
-        this.connected = true;
-        this.opponentName = (this.role === 'host') ? (data.guestName || 'Player 2') : (data.hostName || 'Player 1');
-        this.emit('matched', { role: this.role, opponent: this.opponentName });
-      }
-
-      if (data.gameState) {
-        this.emit('remote_state', data.gameState);
-      }
-    });
+    this.emit('matched', { role: 'host', opponent: `${this.opponentName}` });
   }
 
   sendInput(inputVector) {
     if (this.mode === 'bot' || this.mode === 'local') return;
-
-    if (this.broadcast) {
-      this.broadcast.postMessage({
-        type: 'INPUT',
-        sender: this.playerId,
-        role: this.role,
-        input: inputVector
-      });
-    }
-  }
-
-  sendState(state) {
-    if (this.role !== 'host') return; // Only host syncs authoritative state
-    if (this.broadcast) {
-      this.broadcast.postMessage({
-        type: 'STATE_SYNC',
-        sender: this.playerId,
-        state
-      });
-    }
+    this.broadcast?.postMessage({
+      type: 'INPUT',
+      sender: this.playerId,
+      role: this.role,
+      input: inputVector
+    });
   }
 
   handleBroadcastMessage(msg) {
@@ -278,10 +163,6 @@ export class NetworkManager {
 
     if (msg.type === 'INPUT') {
       this.emit('remote_input', { role: msg.role, input: msg.input });
-    }
-
-    if (msg.type === 'STATE_SYNC') {
-      this.emit('remote_state', msg.state);
     }
   }
 

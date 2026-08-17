@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800;900;1000&family=Outfit:wght@700;900&display=swap');
-
 :root {
   --bg-main: #f5f8ff;
   --bg-surface: #ffffff;
@@ -25,8 +23,8 @@
   --radius-md: 14px;
   --radius-sm: 10px;
   --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.05);
-  --shadow-md: 0 10px 25px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 20px 40px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 8px 20px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 16px 36px rgba(15, 23, 42, 0.12);
   --shadow-p1: 0 8px 20px rgba(14, 165, 233, 0.25);
   --shadow-p2: 0 8px 20px rgba(244, 63, 94, 0.25);
 }
@@ -49,8 +47,8 @@
   --border-light: #1e293b;
   --border-active: #334155;
   --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.6);
 }
 
 * {
@@ -65,18 +63,17 @@
 body {
   background-color: var(--bg-main);
   background-image: 
-    radial-gradient(circle at 15% 20%, rgba(14, 165, 233, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 85% 80%, rgba(244, 63, 94, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.04) 0%, transparent 60%);
+    radial-gradient(circle at 15% 20%, rgba(14, 165, 233, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 85% 80%, rgba(244, 63, 94, 0.06) 0%, transparent 40%);
   color: var(--text-primary);
-  font-family: 'Fredoka', 'Nunito', sans-serif;
+  font-family: 'Fredoka', 'Nunito', system-ui, -apple-system, sans-serif;
   overflow: hidden;
   width: 100vw;
   height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: background-color 0.25s ease, color 0.25s ease;
+  contain: strict;
 }
 
 #app {
@@ -90,35 +87,36 @@ body {
   overflow: hidden;
 }
 
-/* Floating Fun Bubbles */
+/* Optimized Lightweight Ambient Bubbles */
 .fun-bubble {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.55;
-  filter: blur(2px);
-  animation: float 8s ease-in-out infinite alternate;
+  opacity: 0.45;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  animation: float 10s ease-in-out infinite alternate;
 }
 .bubble-1 {
   width: 180px;
   height: 180px;
   top: -40px;
   left: 4%;
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(56, 189, 248, 0.05));
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.25) 0%, transparent 70%);
 }
 .bubble-2 {
   width: 240px;
   height: 240px;
   bottom: -60px;
   right: 4%;
-  background: linear-gradient(135deg, rgba(244, 63, 94, 0.2), rgba(251, 113, 133, 0.05));
-  animation-delay: -3s;
+  background: radial-gradient(circle, rgba(244, 63, 94, 0.25) 0%, transparent 70%);
+  animation-delay: -4s;
 }
 
 @keyframes float {
-  0% { transform: translateY(0px) rotate(0deg); }
-  100% { transform: translateY(-20px) rotate(6deg); }
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(0, -18px, 0); }
 }
 
 /* --- Views & Screens --- */
@@ -130,14 +128,15 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 10;
-  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.2s ease, transform 0.2s ease;
   padding: 16px;
+  will-change: opacity, transform;
 }
 
 .view-screen.hidden {
   opacity: 0;
   pointer-events: none;
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
 /* --- Lobby Main Container --- */
@@ -175,7 +174,7 @@ body {
 }
 
 .logo-title {
-  font-family: 'Fredoka', 'Outfit', sans-serif;
+  font-family: 'Fredoka', sans-serif;
   font-size: 2.8rem;
   font-weight: 700;
   letter-spacing: 2px;
@@ -184,24 +183,12 @@ body {
   align-items: center;
   gap: 6px;
 }
-.logo-title .ver {
-  color: var(--p1-blue);
-  filter: drop-shadow(0 4px 8px var(--p1-blue-glow));
-}
+.logo-title .ver { color: var(--p1-blue); }
+.logo-title .sus { color: var(--p2-pink); }
 .logo-title .divider {
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: pulse 2s infinite ease-in-out;
-}
-.logo-title .sus {
-  color: var(--p2-pink);
-  filter: drop-shadow(0 4px 8px var(--p2-pink-glow));
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15) rotate(8deg); }
 }
 
 .header-actions {
@@ -222,12 +209,12 @@ body {
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-sm);
-  transition: all 0.18s ease;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  will-change: transform;
 }
 
 .icon-circle-btn:hover {
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
   border-color: var(--border-active);
 }
 
@@ -268,13 +255,14 @@ body {
   gap: 8px;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
-  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.15s ease, border-color 0.15s ease;
   position: relative;
   overflow: hidden;
+  will-change: transform;
 }
 
 .game-card:hover {
-  transform: translateY(-4px) scale(1.02);
+  transform: translateY(-3px);
   border-color: var(--p1-blue);
   box-shadow: var(--shadow-md);
 }
@@ -283,7 +271,7 @@ body {
   border-color: var(--p1-blue);
   background: var(--bg-card-hover);
   box-shadow: 0 0 0 3px var(--p1-blue-bg), var(--shadow-p1);
-  transform: translateY(-4px) scale(1.03);
+  transform: translateY(-3px);
 }
 
 .game-svg-preview {
@@ -296,11 +284,7 @@ body {
   justify-content: center;
   overflow: hidden;
   border: 1px solid var(--border-light);
-  transition: transform 0.2s ease;
-}
-
-.game-card:hover .game-svg-preview {
-  transform: scale(1.02);
+  pointer-events: none;
 }
 
 .game-card-name {
@@ -334,16 +318,17 @@ body {
   position: relative;
   overflow-y: auto;
   scrollbar-width: none;
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  transform: translateX(0);
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  transform: translate3d(0, 0, 0);
   opacity: 1;
+  will-change: transform, opacity;
 }
 .side-panel::-webkit-scrollbar {
   display: none;
 }
 
 .side-panel.collapsed {
-  transform: translateX(20px);
+  transform: translate3d(20px, 0, 0);
   opacity: 0.5;
   pointer-events: none;
 }
@@ -381,7 +366,7 @@ body {
   font-weight: 700;
 }
 
-/* Mode Selection Pills inside Panel */
+/* Mode Selection Pills */
 .panel-subheading {
   font-family: 'Fredoka', sans-serif;
   font-size: 0.95rem;
@@ -407,7 +392,7 @@ body {
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: border-color 0.15s ease, background 0.15s ease;
   position: relative;
 }
 
@@ -458,7 +443,7 @@ body {
   text-transform: uppercase;
 }
 
-/* AI Difficulty Selector Section */
+/* AI Difficulty Selector */
 .difficulty-selector {
   display: flex;
   flex-direction: column;
@@ -483,17 +468,8 @@ body {
   align-items: center;
   gap: 4px;
   cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.diff-btn.active {
-  border-color: var(--accent-yellow);
-  background: #fef3c7;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.25);
-}
-[data-theme="dark"] .diff-btn.active {
-  background: rgba(245, 158, 11, 0.2);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  will-change: transform;
 }
 
 .diff-btn.baby.active { border-color: #38bdf8; background: #e0f2fe; }
@@ -514,7 +490,7 @@ body {
   color: var(--text-primary);
 }
 
-/* Play Action Button in Side Panel */
+/* Play Action Button */
 .btn-play-game {
   background: linear-gradient(135deg, var(--p1-blue), #0284c7);
   color: #ffffff;
@@ -530,13 +506,14 @@ body {
   gap: 10px;
   cursor: pointer;
   box-shadow: var(--shadow-p1);
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.15s ease, filter 0.15s ease;
   margin-top: auto;
+  will-change: transform;
 }
 
 .btn-play-game:hover {
-  transform: translateY(-3px) scale(1.02);
-  filter: brightness(1.08);
+  transform: translateY(-2px);
+  filter: brightness(1.06);
 }
 
 /* --- Matchmaking Radar View --- */
@@ -575,6 +552,7 @@ body {
   border-radius: 50%;
   background: conic-gradient(from 0deg, transparent 70%, rgba(14, 165, 233, 0.4) 100%);
   animation: spin 1.5s linear infinite;
+  will-change: transform;
 }
 
 .radar-icon-img {
@@ -612,6 +590,7 @@ body {
   max-height: 80vh;
   aspect-ratio: 16 / 10;
   touch-action: none;
+  image-rendering: auto;
 }
 
 .game-hud {
@@ -638,12 +617,11 @@ body {
   font-size: 0.9rem;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease;
 }
 
 .hud-btn:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
 }
 
 .match-info-badge {
@@ -698,6 +676,7 @@ body {
   background: var(--p1-blue);
   box-shadow: var(--shadow-p1);
   pointer-events: none;
+  will-change: transform;
 }
 
 .touch-action-btn {
@@ -722,15 +701,13 @@ body {
   position: absolute;
   inset: 0;
   background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   z-index: 50;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
   opacity: 1;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.18s ease;
 }
 
 .modal-backdrop.hidden {
@@ -794,12 +771,12 @@ body {
   font-weight: 600;
   cursor: pointer;
   box-shadow: var(--shadow-p1);
-  transition: transform 0.18s ease, filter 0.18s ease;
+  transition: transform 0.15s ease, filter 0.15s ease;
 }
 
 .primary-fun-btn:hover {
   transform: translateY(-2px);
-  filter: brightness(1.08);
+  filter: brightness(1.06);
 }
 
 .secondary-fun-btn {
@@ -813,15 +790,14 @@ body {
   font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: background 0.15s ease;
 }
 
 .secondary-fun-btn:hover {
   background: var(--border-active);
-  transform: translateY(-2px);
 }
 
-/* Settings Modal Option Rows */
+/* Settings Modal */
 .settings-group {
   width: 100%;
   display: flex;
@@ -866,7 +842,7 @@ body {
   font-size: 0.85rem;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .theme-opt-btn.active {
@@ -874,7 +850,7 @@ body {
   color: #ffffff;
 }
 
-/* Controls Guide List */
+/* Controls Guide */
 .guide-list {
   text-align: left;
   width: 100%;
@@ -904,7 +880,6 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-primary);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 /* Responsive */
