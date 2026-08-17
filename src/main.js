@@ -309,6 +309,30 @@ class App {
       });
     });
 
+    document.getElementById('btnChessResign').addEventListener('click', () => {
+      if (this.currentGameInstance && typeof this.currentGameInstance.resign === 'function') {
+        sound.playClick();
+        this.currentGameInstance.resign(1);
+      }
+    });
+
+    document.getElementById('btnAnalysisRematch').addEventListener('click', () => {
+      sound.playClick();
+      document.getElementById('chessAnalysisModal').classList.add('hidden');
+      this.launchGame('chess');
+    });
+
+    document.getElementById('btnAnalysisLobby').addEventListener('click', () => {
+      sound.playClick();
+      document.getElementById('chessAnalysisModal').classList.add('hidden');
+      this.showLoading("Returning to game lobby...", 400, () => {
+        network.disconnect();
+        this.isPlaying = false;
+        countdown.active = false;
+        this.showScreen('lobbyScreen');
+      });
+    });
+
     document.getElementById('btnRestartRound').addEventListener('click', () => {
       sound.playClick();
       if (this.currentGameInstance) {
@@ -526,6 +550,12 @@ class App {
       document.getElementById('matchInfoBadge').textContent = `${gameDef.name.toUpperCase()} - ${modeLabel}`;
     }
 
+    // Toggle Resign button visibility for Chess
+    const btnResign = document.getElementById('btnChessResign');
+    if (btnResign) {
+      btnResign.classList.toggle('hidden', gameKey !== 'chess');
+    }
+
     this.isPlaying = true;
     this.showScreen('gameScreen');
     particles.clear();
@@ -534,8 +564,8 @@ class App {
     this.currentGameInstance = new GameClass(
       this.canvas, 
       this.ctx, 
-      (winner, score) => {
-        this.handleGameOver(winner, score);
+      (winner, score, analysisData) => {
+        this.handleGameOver(winner, score, analysisData);
       }, 
       this.difficulty,
       () => {
@@ -548,7 +578,7 @@ class App {
     countdown.start();
   }
 
-  async handleGameOver(winner, score) {
+  async handleGameOver(winner, score, analysisData = null) {
     sound.playVictory();
 
     try {
@@ -561,6 +591,41 @@ class App {
       });
     } catch (e) {
       // ignore
+    }
+
+    // If Chess game review is available, show Lichess-style analysis modal!
+    if (analysisData) {
+      document.getElementById('analysisResultTitle').textContent = `${analysisData.winner === 1 ? 'White' : 'Black'} Won by ${analysisData.reason}`;
+      document.getElementById('analysisSubtitle').textContent = `${analysisData.totalMoves} Total Moves • Lichess-Grade Game Review`;
+      
+      document.getElementById('analysisP1Name').textContent = 'Player 1 (White)';
+      document.getElementById('analysisP2Name').textContent = this.gameMode === 'ai' ? `AI Bot [${this.difficulty.toUpperCase()}]` : 'Player 2 (Black)';
+      
+      document.getElementById('analysisP1Elo').textContent = `ELO: ${analysisData.p1Elo}`;
+      document.getElementById('analysisP2Elo').textContent = `ELO: ${analysisData.p2Elo}`;
+      
+      document.getElementById('analysisP1Acc').textContent = `${analysisData.p1Acc}%`;
+      document.getElementById('analysisP2Acc').textContent = `${analysisData.p2Acc}%`;
+      
+      document.getElementById('analysisP1Perf').textContent = `Perf: ${analysisData.p1Perf}`;
+      document.getElementById('analysisP2Perf').textContent = `Perf: ${analysisData.p2Perf}`;
+      
+      document.getElementById('p1Brilliant').textContent = analysisData.p1Stats.brilliant;
+      document.getElementById('p2Brilliant').textContent = analysisData.p2Stats.brilliant;
+      document.getElementById('p1Great').textContent = analysisData.p1Stats.great;
+      document.getElementById('p2Great').textContent = analysisData.p2Stats.great;
+      document.getElementById('p1Best').textContent = analysisData.p1Stats.best;
+      document.getElementById('p2Best').textContent = analysisData.p2Stats.best;
+      document.getElementById('p1Inaccuracy').textContent = analysisData.p1Stats.inaccuracy;
+      document.getElementById('p2Inaccuracy').textContent = analysisData.p2Stats.inaccuracy;
+      document.getElementById('p1Mistake').textContent = analysisData.p1Stats.mistake;
+      document.getElementById('p2Mistake').textContent = analysisData.p2Stats.mistake;
+      document.getElementById('p1Blunder').textContent = analysisData.p1Stats.blunder;
+      document.getElementById('p2Blunder').textContent = analysisData.p2Stats.blunder;
+
+      document.getElementById('analysisPgnContent').textContent = analysisData.pgn;
+      document.getElementById('chessAnalysisModal').classList.remove('hidden');
+      return;
     }
 
     if (this.gameMode === 'tournament') {

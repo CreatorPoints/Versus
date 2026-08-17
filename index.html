@@ -426,7 +426,8 @@
     <section id="gameScreen" class="view-screen hidden">
       <header class="game-hud">
         <button id="btnExitGame" class="hud-btn">✕ Exit</button>
-        <div id="matchInfoBadge" class="match-info-badge">TANK BATTLE</div>
+        <button id="btnChessResign" class="hud-btn hidden" style="background: var(--p2-pink-bg); color: var(--p2-pink); border-color: var(--p2-pink);">🏳️ Resign</button>
+        <div id="matchInfoBadge" class="match-info-badge">HOCKEY</div>
         <button id="btnRestartRound" class="hud-btn">↻ Reset</button>
       </header>
 
@@ -442,6 +443,106 @@
     </section>
 
     <!-- 4. MODALS -->
+    <!-- Chess Lichess-Style Game Analysis & Review Modal -->
+    <div id="chessAnalysisModal" class="modal-backdrop hidden">
+      <div class="modal-card analysis-card">
+        <div class="analysis-header">
+          <div class="analysis-badge">♟️ GAME REVIEW & ANALYSIS</div>
+          <h2 id="analysisResultTitle" class="modal-title" style="margin: 4px 0 2px;">White Wins by Checkmate</h2>
+          <p id="analysisSubtitle" style="color: var(--text-secondary); font-size: 0.95rem; font-weight: 700;">Full Engine Analysis • Lichess Style</p>
+        </div>
+
+        <!-- Player Comparison & Accuracy Cards -->
+        <div class="analysis-players-grid">
+          <!-- White Player (P1) -->
+          <div class="analysis-player-box white-box">
+            <div class="player-tag">
+              <span class="dot white"></span>
+              <span id="analysisP1Name" class="p-name">Player 1 (White)</span>
+            </div>
+            <div class="acc-display">
+              <span id="analysisP1Acc" class="acc-number">92.5%</span>
+              <span class="acc-sub">ACCURACY</span>
+            </div>
+            <div class="elo-tags-row">
+              <span id="analysisP1Elo" class="elo-badge">ELO: 1500</span>
+              <span id="analysisP1Perf" class="perf-badge">Perf: 1680</span>
+            </div>
+          </div>
+
+          <div class="analysis-vs-sign">VS</div>
+
+          <!-- Black Player (P2 / Bot) -->
+          <div class="analysis-player-box black-box">
+            <div class="player-tag">
+              <span class="dot black"></span>
+              <span id="analysisP2Name" class="p-name">AI Bot (Black)</span>
+            </div>
+            <div class="acc-display">
+              <span id="analysisP2Acc" class="acc-number">74.8%</span>
+              <span class="acc-sub">ACCURACY</span>
+            </div>
+            <div class="elo-tags-row">
+              <span id="analysisP2Elo" class="elo-badge">ELO: 1100</span>
+              <span id="analysisP2Perf" class="perf-badge">Perf: 1020</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Move Classification Breakdown -->
+        <div class="analysis-breakdown-container">
+          <div class="breakdown-row">
+            <span class="stat-pill brilliant">💎 Brilliant</span>
+            <span id="p1Brilliant" class="stat-count p1">1</span>
+            <span class="stat-label">Brilliant Moves</span>
+            <span id="p2Brilliant" class="stat-count p2">0</span>
+          </div>
+          <div class="breakdown-row">
+            <span class="stat-pill great">⭐ Great</span>
+            <span id="p1Great" class="stat-count p1">4</span>
+            <span class="stat-label">Great Moves</span>
+            <span id="p2Great" class="stat-count p2">2</span>
+          </div>
+          <div class="breakdown-row">
+            <span class="stat-pill best">🟢 Best</span>
+            <span id="p1Best" class="stat-count p1">12</span>
+            <span class="stat-label">Best Moves</span>
+            <span id="p2Best" class="stat-count p2">8</span>
+          </div>
+          <div class="breakdown-row">
+            <span class="stat-pill inaccuracy">🟡 Inaccuracy</span>
+            <span id="p1Inaccuracy" class="stat-count p1">2</span>
+            <span class="stat-label">Inaccuracies</span>
+            <span id="p2Inaccuracy" class="stat-count p2">3</span>
+          </div>
+          <div class="breakdown-row">
+            <span class="stat-pill mistake">🟠 Mistake</span>
+            <span id="p1Mistake" class="stat-count p1">1</span>
+            <span class="stat-label">Mistakes</span>
+            <span id="p2Mistake" class="stat-count p2">2</span>
+          </div>
+          <div class="breakdown-row">
+            <span class="stat-pill blunder">🔴 Blunder</span>
+            <span id="p1Blunder" class="stat-count p1">0</span>
+            <span class="stat-label">Blunders</span>
+            <span id="p2Blunder" class="stat-count p2">2</span>
+          </div>
+        </div>
+
+        <!-- PGN Notation Container -->
+        <div class="pgn-container">
+          <div class="pgn-header">📜 PGN Move Log:</div>
+          <div id="analysisPgnContent" class="pgn-scroll-box">1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. d3 Nf6</div>
+        </div>
+
+        <!-- Navigation Buttons (Return only via buttons) -->
+        <div class="modal-btn-row" style="margin-top: 14px;">
+          <button id="btnAnalysisRematch" class="primary-fun-btn">Rematch ↻</button>
+          <button id="btnAnalysisLobby" class="secondary-fun-btn">Back to Lobby ⌂</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Winner Modal -->
     <div id="winnerModal" class="modal-backdrop hidden">
       <div class="modal-card">

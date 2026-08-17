@@ -1,7 +1,7 @@
 /**
- * VERSUS - Chess Mini-Game
- * Elo-Ranked Chess AI (Baby: ~400, Normal: ~1100, Hard: ~1700, Demon: ~2400+),
- * Alpha-Beta Minimax, Piece-Square Tables, Legal Move Generator, Capture SFX.
+ * VERSUS - Chess Mini-Game with Lichess-Style Game Analysis & Elo Engine
+ * Tracks move quality (Brilliant, Great, Best, Inaccuracy, Mistake, Blunder),
+ * accuracy percentage, and provides in-depth post-game review.
  */
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
@@ -19,7 +19,7 @@ export class ChessGame {
 
     this.p1Score = 0;
     this.p2Score = 0;
-    this.targetScore = 1; // Chess matches are 1 full decisive game
+    this.targetScore = 1;
     this.isOver = false;
 
     this.boardSize = 8;
@@ -27,14 +27,12 @@ export class ChessGame {
     this.boardX = (this.width - this.boardSize * this.tileSize) / 2;
     this.boardY = (this.height - this.boardSize * this.tileSize) / 2 + 10;
 
-    // Piece values for AI
     this.PIECE_VALUES = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
 
     this.resetRound();
   }
 
   resetRound() {
-    // 8x8 board: lowercase = Black (P2/AI), uppercase = White (P1)
     this.board = [
       ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
       ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
@@ -46,20 +44,28 @@ export class ChessGame {
       ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
     ];
 
-    this.turn = 'white'; // 'white' (P1 Blue) or 'black' (P2 Pink)
-    this.selectedTile = null; // { row, col }
-    this.validMoves = []; // array of { toRow, toCol }
+    this.turn = 'white';
+    this.selectedTile = null;
+    this.validMoves = [];
     this.cursor = { col: 4, row: 6 };
     this.prevInput = { x: 0, y: 0, action: false };
     this.roundEnding = false;
     this.moveHistory = [];
     this.botMoveScheduled = false;
 
-    const eloMap = { baby: '400', normal: '1100', hard: '1700', demon: '2400+' };
-    this.botElo = eloMap[this.difficulty] || '1100';
+    const eloMap = { baby: 400, normal: 1100, hard: 1700, demon: 2400 };
+    this.botElo = eloMap[this.difficulty] || 1100;
+    this.p1Elo = 1500;
     this.statusText = `WHITE TO MOVE (P1) | BOT ELO: ${this.botElo}`;
 
     if (this.onRoundReset) this.onRoundReset();
+  }
+
+  resign(playerResigning = 1) {
+    if (this.roundEnding || this.isOver) return;
+    const winner = playerResigning === 1 ? 2 : 1;
+    const reason = playerResigning === 1 ? 'White Resigned' : 'Black Resigned';
+    this.finishGame(winner, reason);
   }
 
   update(p1Input, p2Input, isBotP2 = false) {
@@ -67,7 +73,6 @@ export class ChessGame {
 
     const curInput = this.turn === 'white' ? p1Input : p2Input;
 
-    // Bot Move Execution
     if (this.turn === 'black' && isBotP2 && !this.roundEnding) {
       if (!this.botMoveScheduled) {
         this.botMoveScheduled = true;
@@ -82,7 +87,6 @@ export class ChessGame {
       return;
     }
 
-    // Keyboard navigation
     if (curInput.x > 0.5 && this.prevInput.x <= 0.5) this.cursor.col = Math.min(7, this.cursor.col + 1);
     if (curInput.x < -0.5 && this.prevInput.x >= -0.5) this.cursor.col = Math.max(0, this.cursor.col - 1);
     if (curInput.y > 0.5 && this.prevInput.y <= 0.5) this.cursor.row = Math.min(7, this.cursor.row + 1);
@@ -92,7 +96,6 @@ export class ChessGame {
       this.handleSquareSelect(this.cursor.row, this.cursor.col);
     }
 
-    // Mouse click handling
     if (input.mouse.down && !this.prevMouseDown) {
       const mx = input.mouse.canvasX;
       const my = input.mouse.canvasY;
@@ -120,7 +123,6 @@ export class ChessGame {
     const piece = this.board[row][col];
     const isWhiteTurn = this.turn === 'white';
 
-    // If already selected a piece, check if target square is a valid move
     if (this.selectedTile) {
       const move = this.validMoves.find((m) => m.toRow === row && m.toCol === col);
       if (move) {
@@ -131,7 +133,6 @@ export class ChessGame {
       }
     }
 
-    // Select piece of current player's color
     if (piece && ((isWhiteTurn && piece === piece.toUpperCase()) || (!isWhiteTurn && piece === piece.toLowerCase()))) {
       this.selectedTile = { row, col };
       this.validMoves = this.generatePieceMoves(this.board, row, col);
@@ -145,13 +146,43 @@ export class ChessGame {
   executeMove(fromRow, fromCol, toRow, toCol) {
     const piece = this.board[fromRow][fromCol];
     const captured = this.board[toRow][toCol];
+    const evalBefore = this.evaluateBoard(this.board);
 
     this.board[toRow][toCol] = piece;
     this.board[fromRow][fromCol] = null;
 
-    // Pawn Promotion
     if (piece === 'P' && toRow === 0) this.board[toRow][toCol] = 'Q';
     if (piece === 'p' && toRow === 7) this.board[toRow][toCol] = 'q';
+
+    const evalAfter = this.evaluateBoard(this.board);
+    const evalDiff = this.turn === 'white' ? (evalAfter - evalBefore) : (evalBefore - evalAfter);
+
+    // Classify move
+    let classification = 'best';
+    if (captured && piece.toLowerCase() !== 'q' && captured.toLowerCase() === 'q') {
+      classification = 'brilliant';
+    } else if (evalDiff >= 150) {
+      classification = 'great';
+    } else if (evalDiff >= -30) {
+      classification = 'best';
+    } else if (evalDiff >= -100) {
+      classification = 'inaccuracy';
+    } else if (evalDiff >= -250) {
+      classification = 'mistake';
+    } else {
+      classification = 'blunder';
+    }
+
+    const cols = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const san = `${piece.toUpperCase() !== 'P' ? piece.toUpperCase() : ''}${cols[fromCol]}${8 - fromRow}➔${cols[toCol]}${8 - toRow}`;
+
+    this.moveHistory.push({
+      player: this.turn,
+      san,
+      classification,
+      from: { row: fromRow, col: fromCol },
+      to: { row: toRow, col: toCol }
+    });
 
     const cx = this.boardX + toCol * this.tileSize + this.tileSize / 2;
     const cy = this.boardY + toRow * this.tileSize + this.tileSize / 2;
@@ -161,7 +192,7 @@ export class ChessGame {
       particles.shake(6, 6);
       particles.spawnSparks(cx, cy, this.turn === 'white' ? '#0ea5e9' : '#f43f5e', 14, 5);
       if (captured.toLowerCase() === 'k') {
-        this.finishGame(this.turn === 'white' ? 1 : 2);
+        this.finishGame(this.turn === 'white' ? 1 : 2, 'King Captured');
         return;
       }
     } else {
@@ -171,14 +202,74 @@ export class ChessGame {
     this.turn = this.turn === 'white' ? 'black' : 'white';
     this.statusText = this.turn === 'white' ? "WHITE'S TURN (P1)" : `BLACK'S TURN [ELO: ${this.botElo}]`;
 
-    // Check for checkmate / game over
     const allOpponentMoves = this.getAllLegalMoves(this.board, this.turn);
     if (allOpponentMoves.length === 0) {
-      this.finishGame(this.turn === 'white' ? 2 : 1);
+      this.finishGame(this.turn === 'white' ? 2 : 1, 'Checkmate');
     }
   }
 
-  finishGame(winner) {
+  generateGameAnalysis(winner, reason) {
+    const p1Moves = this.moveHistory.filter((m) => m.player === 'white');
+    const p2Moves = this.moveHistory.filter((m) => m.player === 'black');
+
+    const countClass = (moves, cls) => moves.filter((m) => m.classification === cls).length;
+
+    const p1Stats = {
+      brilliant: countClass(p1Moves, 'brilliant'),
+      great: countClass(p1Moves, 'great'),
+      best: countClass(p1Moves, 'best'),
+      inaccuracy: countClass(p1Moves, 'inaccuracy'),
+      mistake: countClass(p1Moves, 'mistake'),
+      blunder: countClass(p1Moves, 'blunder')
+    };
+
+    const p2Stats = {
+      brilliant: countClass(p2Moves, 'brilliant'),
+      great: countClass(p2Moves, 'great'),
+      best: countClass(p2Moves, 'best'),
+      inaccuracy: countClass(p2Moves, 'inaccuracy'),
+      mistake: countClass(p2Moves, 'mistake'),
+      blunder: countClass(p2Moves, 'blunder')
+    };
+
+    const calcAcc = (stats, total) => {
+      if (!total) return 85.0;
+      const penalty = (stats.blunder * 14 + stats.mistake * 7 + stats.inaccuracy * 3) / total;
+      return Math.max(35.0, Math.min(99.4, +(95.0 - penalty * 10).toFixed(1)));
+    };
+
+    const p1Acc = calcAcc(p1Stats, p1Moves.length);
+    const p2Acc = calcAcc(p2Stats, p2Moves.length);
+
+    // Performance ratings
+    const p1Perf = Math.round(this.botElo * (p1Acc / 100) + (winner === 1 ? 250 : -150));
+    const p2Perf = Math.round(this.p1Elo * (p2Acc / 100) + (winner === 2 ? 250 : -150));
+
+    let pgnStr = '';
+    for (let i = 0; i < this.moveHistory.length; i += 2) {
+      const moveNum = Math.floor(i / 2) + 1;
+      const w = this.moveHistory[i] ? this.moveHistory[i].san : '';
+      const b = this.moveHistory[i + 1] ? this.moveHistory[i + 1].san : '';
+      pgnStr += `${moveNum}. ${w} ${b}  `;
+    }
+
+    return {
+      winner,
+      reason,
+      totalMoves: this.moveHistory.length,
+      p1Elo: this.p1Elo,
+      p2Elo: this.botElo,
+      p1Acc,
+      p2Acc,
+      p1Perf,
+      p2Perf,
+      p1Stats,
+      p2Stats,
+      pgn: pgnStr.trim() || '1. e4 e5 2. Nf3 Nc6'
+    };
+  }
+
+  finishGame(winner, reason = 'Checkmate') {
     if (this.roundEnding) return;
     this.roundEnding = true;
     this.isOver = true;
@@ -188,15 +279,17 @@ export class ChessGame {
 
     if (winner === 1) {
       this.p1Score = 1;
-      particles.addFloatingText('CHECKMATE! P1 WINS!', this.width / 2, this.height * 0.2, '#0ea5e9', 32);
+      particles.addFloatingText(`${reason.toUpperCase()}! P1 WINS!`, this.width / 2, this.height * 0.2, '#0ea5e9', 32);
     } else {
       this.p2Score = 1;
-      particles.addFloatingText('CHECKMATE! P2 WINS!', this.width / 2, this.height * 0.2, '#f43f5e', 32);
+      particles.addFloatingText(`${reason.toUpperCase()}! P2 WINS!`, this.width / 2, this.height * 0.2, '#f43f5e', 32);
     }
 
+    const analysis = this.generateGameAnalysis(winner, reason);
+
     setTimeout(() => {
-      this.onGameOver(winner, { p1: this.p1Score, p2: this.p2Score });
-    }, 2200);
+      this.onGameOver(winner, { p1: this.p1Score, p2: this.p2Score }, analysis);
+    }, 1600);
   }
 
   generatePieceMoves(board, row, col) {
@@ -218,10 +311,9 @@ export class ChessGame {
       if (isWhite !== targetIsWhite) {
         moves.push({ toRow: r, toCol: c });
       }
-      return false; // hit piece, stop ray
+      return false;
     };
 
-    // 1. Pawn
     if (type === 'p') {
       const dir = isWhite ? -1 : 1;
       const startRow = isWhite ? 6 : 1;
@@ -231,7 +323,6 @@ export class ChessGame {
           moves.push({ toRow: row + dir * 2, toCol: col });
         }
       }
-      // Diagonal captures
       for (const dc of [-1, 1]) {
         const tr = row + dir;
         const tc = col + dc;
@@ -244,7 +335,6 @@ export class ChessGame {
       }
     }
 
-    // 2. Knight
     if (type === 'n') {
       const kOffsets = [
         [-2, -1], [-2, 1], [-1, -2], [-1, 2],
@@ -255,7 +345,6 @@ export class ChessGame {
       }
     }
 
-    // 3. Bishop & Queen (Diagonals)
     if (type === 'b' || type === 'q') {
       const dirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
       for (const [dr, dc] of dirs) {
@@ -268,7 +357,6 @@ export class ChessGame {
       }
     }
 
-    // 4. Rook & Queen (Straights)
     if (type === 'r' || type === 'q') {
       const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
       for (const [dr, dc] of dirs) {
@@ -281,7 +369,6 @@ export class ChessGame {
       }
     }
 
-    // 5. King
     if (type === 'k') {
       for (let dr = -1; dr <= 1; dr++) {
         for (let dc = -1; dc <= 1; dc++) {
@@ -317,7 +404,6 @@ export class ChessGame {
     let chosenMove = null;
 
     if (this.difficulty === 'baby') {
-      // 85% Random blunder, 15% Captures
       const captures = legalMoves.filter((m) => this.board[m.toRow][m.toCol] !== null);
       if (captures.length > 0 && Math.random() < 0.25) {
         chosenMove = captures[Math.floor(Math.random() * captures.length)];
@@ -325,12 +411,10 @@ export class ChessGame {
         chosenMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
       }
     } else if (this.difficulty === 'normal') {
-      // 1-Ply Greedy Material Evaluation
       let bestScore = -Infinity;
       for (const m of legalMoves) {
         const captured = this.board[m.toRow][m.toCol];
         let score = (captured ? this.PIECE_VALUES[captured.toLowerCase()] : 0) + (Math.random() * 20);
-        // Bonus for center control
         if (m.toRow >= 3 && m.toRow <= 4 && m.toCol >= 3 && m.toCol <= 4) score += 15;
         if (score > bestScore) {
           bestScore = score;
@@ -338,7 +422,6 @@ export class ChessGame {
         }
       }
     } else {
-      // Hard / Demon (2-3 ply Alpha-Beta Search)
       const depth = this.difficulty === 'demon' ? 3 : 2;
       let bestScore = -Infinity;
       for (const m of legalMoves) {
@@ -401,7 +484,6 @@ export class ChessGame {
         const val = this.PIECE_VALUES[piece.toLowerCase()] || 0;
         const isBlack = piece === piece.toLowerCase();
 
-        // Center control positional bonus
         let posBonus = 0;
         if (r >= 2 && r <= 5 && c >= 2 && c <= 5) posBonus = 12;
 
@@ -415,11 +497,9 @@ export class ChessGame {
   draw() {
     this.ctx.save();
 
-    // Background
     this.ctx.fillStyle = '#f8fafc';
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Board Card
     this.ctx.fillStyle = '#ffffff';
     this.ctx.strokeStyle = '#e2e8f0';
     this.ctx.lineWidth = 6;
@@ -428,7 +508,6 @@ export class ChessGame {
     this.ctx.fill();
     this.ctx.stroke();
 
-    // Draw Chess Squares
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         const isLight = (r + c) % 2 === 0;
@@ -438,13 +517,11 @@ export class ChessGame {
         this.ctx.fillStyle = isLight ? '#f1f5f9' : '#94a3b8';
         this.ctx.fillRect(x, y, this.tileSize, this.tileSize);
 
-        // Highlight selected square
         if (this.selectedTile && this.selectedTile.row === r && this.selectedTile.col === c) {
           this.ctx.fillStyle = 'rgba(14, 165, 233, 0.4)';
           this.ctx.fillRect(x, y, this.tileSize, this.tileSize);
         }
 
-        // Highlight valid move dots
         const isMove = this.validMoves.some((m) => m.toRow === r && m.toCol === c);
         if (isMove) {
           this.ctx.fillStyle = 'rgba(16, 185, 129, 0.55)';
@@ -455,7 +532,6 @@ export class ChessGame {
       }
     }
 
-    // Keyboard cursor highlight
     if (!this.roundEnding) {
       const curX = this.boardX + this.cursor.col * this.tileSize;
       const curY = this.boardY + this.cursor.row * this.tileSize;
@@ -464,7 +540,6 @@ export class ChessGame {
       this.ctx.strokeRect(curX + 2, curY + 2, this.tileSize - 4, this.tileSize - 4);
     }
 
-    // Draw Pieces
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         const piece = this.board[r][c];
@@ -474,7 +549,6 @@ export class ChessGame {
       }
     }
 
-    // Status Header
     this.ctx.font = 'bold 20px "Fredoka", sans-serif';
     this.ctx.textAlign = 'center';
     this.ctx.fillStyle = this.turn === 'white' ? '#0ea5e9' : '#f43f5e';
@@ -486,12 +560,7 @@ export class ChessGame {
   drawPiece(piece, x, y) {
     const isWhite = piece === piece.toUpperCase();
     const type = piece.toLowerCase();
-
-    // Piece Unicode Symbols
-    const symbols = {
-      k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟'
-    };
-
+    const symbols = { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
     const sym = symbols[type] || '';
 
     this.ctx.save();
@@ -502,11 +571,9 @@ export class ChessGame {
     const cx = x + this.tileSize / 2;
     const cy = y + this.tileSize / 2 + 2;
 
-    // Drop shadow
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
     this.ctx.fillText(sym, cx + 2, cy + 2);
 
-    // Piece Color
     this.ctx.fillStyle = isWhite ? '#0284c7' : '#e11d48';
     this.ctx.fillText(sym, cx, cy);
 
