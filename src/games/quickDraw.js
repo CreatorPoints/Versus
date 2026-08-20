@@ -407,10 +407,22 @@ export class QuickDraw {
     this.ctx.closePath();
     this.ctx.fill();
 
-    // Gun / Arm
-    this.ctx.fillStyle = '#334155';
-    this.ctx.fillRect(10, 0, 18, 5);
-    this.ctx.fillRect(24, 5, 4, 6);
+    // Gun & Arm (Facing forward towards opponent)
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(2, -2, 10, 8);
+
+    // Wooden Pistol Grip
+    this.ctx.fillStyle = '#78350f';
+    this.ctx.fillRect(8, 2, 5, 10);
+
+    // Revolver Cylinder & Receiver
+    this.ctx.fillStyle = '#475569';
+    this.ctx.fillRect(11, -1, 8, 7);
+
+    // Gun Barrel pointing forward
+    this.ctx.fillStyle = '#0f172a';
+    this.ctx.fillRect(17, 0, 14, 4);
+    this.ctx.fillRect(29, -2, 2, 2); // Front sight
 
     // Legs
     this.ctx.fillStyle = '#475569';

@@ -17,6 +17,7 @@
   "dependencies": {
     "canvas-confetti": "^1.9.4",
     "firebase": "^12.17.1",
-    "html-to-image": "^1.11.13"
+    "html-to-image": "^1.11.13",
+    "peerjs": "^1.5.5"
   }
 }

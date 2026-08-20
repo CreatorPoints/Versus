@@ -239,11 +239,6 @@ class App {
       sound.playClick();
       const mode = pill.dataset.mode;
 
-      if (mode === 'quick_wip') {
-        document.getElementById('wipModal').classList.remove('hidden');
-        return;
-      }
-
       document.querySelectorAll('.mode-pill').forEach((p) => p.classList.remove('active'));
       pill.classList.add('active');
       this.gameMode = mode;
@@ -271,10 +266,11 @@ class App {
 
     document.getElementById('btnCreateRoom').addEventListener('click', async () => {
       sound.playClick();
+      document.getElementById('roomModal').classList.add('hidden');
       const code = await network.createPrivateRoom();
       document.getElementById('roomCodeInput').value = code;
       this.showRadarScreen(`Room: ${code}`);
-      document.getElementById('radarStatus').textContent = 'Waiting for friend to enter code...';
+      document.getElementById('radarStatus').textContent = `Room Code: VERSUS-${code} • Share with friend to connect!`;
     });
 
     document.getElementById('btnJoinRoom').addEventListener('click', async () => {
@@ -511,7 +507,7 @@ class App {
     }
   }
 
-  handlePlayAction() {
+  async handlePlayAction() {
     if (this.gameMode === 'ai') {
       network.disconnect();
       input.setLocal2P(false);
@@ -524,6 +520,11 @@ class App {
       this.startTournament();
     } else if (this.gameMode === 'room') {
       document.getElementById('roomModal').classList.remove('hidden');
+    } else if (this.gameMode === 'online') {
+      this.showRadarScreen('Scanning Global Matchmaking...');
+      await network.findRandomMatch((status) => {
+        document.getElementById('radarStatus').textContent = status;
+      });
     }
   }
 
@@ -604,7 +605,7 @@ class App {
       particles.addFloatingText('MATCH FOUND!', this.canvas.width / 2, this.canvas.height / 2, '#0ea5e9', 32);
       setTimeout(() => {
         this.launchGame(this.currentGameKey);
-      }, 500);
+      }, 600);
     });
 
     network.on('remote_input', (data) => {
@@ -613,6 +614,10 @@ class App {
       } else {
         input.p2 = data.input;
       }
+    });
+
+    network.on('peer_disconnected', () => {
+      particles.addFloatingText('OPPONENT DISCONNECTED', this.canvas.width / 2, this.canvas.height / 2, '#f43f5e', 24);
     });
   }
 
@@ -635,6 +640,7 @@ class App {
     this.tournamentIndex = 0;
     this.tournamentP1Wins = 0;
     this.tournamentP2Wins = 0;
+    this.tournamentHistory = [];
     this.launchTournamentGame();
   }
 
@@ -642,6 +648,72 @@ class App {
     const current = this.tournamentGames[this.tournamentIndex];
     document.getElementById('matchInfoBadge').textContent = `TOURNAMENT: ${current.name.toUpperCase()} (${this.tournamentIndex + 1}/5)`;
     this.launchGame(current.key);
+  }
+
+  updateBottomPanel() {
+    if (!this.isPlaying || !this.currentGameInstance) return;
+
+    // Red User (P1) vs Blue Opponent (P2)
+    const userScore = this.currentGameInstance.p1Score !== undefined ? this.currentGameInstance.p1Score : 0;
+    const oppScore = this.currentGameInstance.p2Score !== undefined ? this.currentGameInstance.p2Score : 0;
+
+    const userScoreEl = document.getElementById('bottomUserScore');
+    const oppScoreEl = document.getElementById('bottomOpponentScore');
+    if (userScoreEl) userScoreEl.textContent = userScore;
+    if (oppScoreEl) oppScoreEl.textContent = oppScore;
+
+    // Player Names / Tags
+    const userNameEl = document.getElementById('bottomUserName');
+    const oppNameEl = document.getElementById('bottomOpponentName');
+    
+    if (this.gameMode === 'ai') {
+      if (userNameEl) userNameEl.textContent = 'YOU (RED)';
+      if (oppNameEl) oppNameEl.textContent = `AI [${this.difficulty.toUpperCase()}] (BLUE)`;
+    } else if (this.gameMode === 'local') {
+      if (userNameEl) userNameEl.textContent = 'PLAYER 1 (RED)';
+      if (oppNameEl) oppNameEl.textContent = 'PLAYER 2 (BLUE)';
+    } else if (this.gameMode === 'tournament') {
+      if (userNameEl) userNameEl.textContent = `YOU [${this.tournamentP1Wins} W]`;
+      if (oppNameEl) oppNameEl.textContent = `AI BOT [${this.tournamentP2Wins} W]`;
+    } else {
+      if (userNameEl) userNameEl.textContent = network.role === 'host' ? 'YOU (RED / HOST)' : 'YOU (RED / GUEST)';
+      if (oppNameEl) oppNameEl.textContent = network.opponentName || 'OPPONENT (BLUE)';
+    }
+
+    // Center Tournament Tracker
+    const badgeEl = document.getElementById('bottomTourneyBadge');
+    const dotsEl = document.getElementById('bottomTourneyDots');
+    const statusEl = document.getElementById('bottomMatchStatus');
+
+    if (this.gameMode === 'tournament') {
+      if (badgeEl) badgeEl.textContent = '⚔️ TOURNAMENT SERIES';
+      if (dotsEl) {
+        dotsEl.style.display = 'flex';
+        const dots = dotsEl.querySelectorAll('.tourney-dot');
+        dots.forEach((dot, idx) => {
+          dot.classList.remove('active', 'won-red', 'won-blue');
+          if (idx === this.tournamentIndex) {
+            dot.classList.add('active');
+          }
+          if (this.tournamentHistory && idx < this.tournamentHistory.length) {
+            const winner = this.tournamentHistory[idx];
+            if (winner === 1) dot.classList.add('won-red');
+            else if (winner === 2) dot.classList.add('won-blue');
+          }
+        });
+      }
+      if (statusEl) {
+        statusEl.textContent = `MATCH ${this.tournamentIndex + 1} OF 5 • FIRST TO 3 WINS`;
+      }
+    } else {
+      const gameDef = this.allGames.find((g) => g.key === this.currentGameKey);
+      if (badgeEl) badgeEl.textContent = gameDef ? gameDef.name.toUpperCase() : 'VERSUS BATTLE';
+      if (dotsEl) dotsEl.style.display = 'none';
+      if (statusEl) {
+        const target = this.currentGameInstance.targetScore || 1;
+        statusEl.textContent = target === 1 ? '1 POINT SUDDEN DEATH' : `FIRST TO ${target} POINTS WINS`;
+      }
+    }
   }
 
   launchGame(gameKey) {
@@ -756,17 +828,20 @@ class App {
     }
 
     if (this.gameMode === 'tournament') {
+      if (!this.tournamentHistory) this.tournamentHistory = [];
+      this.tournamentHistory.push(winner);
+
       if (winner === 1) this.tournamentP1Wins++;
-      else this.tournamentP2Wins++;
+      else if (winner === 2) this.tournamentP2Wins++;
 
       if (this.tournamentP1Wins >= 3 || this.tournamentP2Wins >= 3 || this.tournamentIndex >= 4) {
         const tourneyWinner = this.tournamentP1Wins > this.tournamentP2Wins ? 1 : 2;
-        const winnerName = tourneyWinner === 1 ? 'PLAYER 1' : 'AI BOT';
-        document.getElementById('winnerText').textContent = `🏆 ${winnerName} WINS!`;
+        const winnerName = tourneyWinner === 1 ? 'PLAYER 1 (YOU)' : 'AI BOT';
+        document.getElementById('winnerText').textContent = `🏆 ${winnerName} WINS THE TOURNAMENT!`;
         document.getElementById('modalScoreText').innerHTML = `
-          <span style="color: var(--p1-blue);">${this.tournamentP1Wins}</span>
+          <span style="color: var(--p2-pink);">${this.tournamentP1Wins}</span>
           <span style="color: #cbd5e1;">-</span>
-          <span style="color: var(--p2-pink);">${this.tournamentP2Wins}</span>
+          <span style="color: var(--p1-blue);">${this.tournamentP2Wins}</span>
         `;
         document.getElementById('winnerModal').classList.remove('hidden');
       } else {
@@ -774,17 +849,17 @@ class App {
         setTimeout(() => this.launchTournamentGame(), 1500);
       }
     } else {
-      let winnerName = winner === 1 ? 'PLAYER 1' : 'PLAYER 2';
+      let winnerName = winner === 1 ? 'PLAYER 1 (YOU)' : 'PLAYER 2';
       if (this.gameMode === 'ai' && winner === 2) {
         winnerName = `BOT [${this.difficulty.toUpperCase()}]`;
       }
-      const winnerColor = winner === 1 ? 'var(--p1-blue)' : 'var(--p2-pink)';
+      const winnerColor = winner === 1 ? 'var(--p2-pink)' : 'var(--p1-blue)';
       document.getElementById('winnerText').textContent = `${winnerName} WINS!`;
       document.getElementById('winnerText').style.color = winnerColor;
       document.getElementById('modalScoreText').innerHTML = `
-        <span style="color: var(--p1-blue);">${score.p1}</span>
+        <span style="color: var(--p2-pink);">${score.p1}</span>
         <span style="color: #cbd5e1;">-</span>
-        <span style="color: var(--p2-pink);">${score.p2}</span>
+        <span style="color: var(--p1-blue);">${score.p2}</span>
       `;
       document.getElementById('winnerModal').classList.remove('hidden');
     }
@@ -795,7 +870,7 @@ class App {
       if (this.isPlaying && this.currentGameInstance) {
         input.update();
 
-        if (network.connected && network.mode !== 'bot') {
+        if (network.connected && network.mode !== 'ai' && network.mode !== 'local') {
           const myInput = network.role === 'host' ? input.p1 : input.p2;
           network.sendInput(myInput);
         }
@@ -825,6 +900,9 @@ class App {
         }
 
         this.ctx.restore();
+
+        // 5. Update Bottom Scoreboard & Tournament Panel
+        this.updateBottomPanel();
       }
 
       requestAnimationFrame(loop);

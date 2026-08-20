@@ -18,7 +18,7 @@ export class TicTacToe {
 
     this.p1Score = 0;
     this.p2Score = 0;
-    this.targetScore = 3;
+    this.targetScore = 1;
     this.isOver = false;
 
     this.gridSize = 3;

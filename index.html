@@ -341,9 +341,9 @@
 
             <!-- 3. Tournament Mode -->
             <div class="mode-pill" data-mode="tournament">
-              <span class="mode-pill-icon">🏆</span>
+              <span class="mode-pill-icon">⚔️</span>
               <div class="mode-pill-info">
-                <span class="mode-pill-name">Tournament Cup</span>
+                <span class="mode-pill-name">Tournament Mode</span>
                 <span class="mode-pill-hint">Best of 5 random games</span>
               </div>
             </div>
@@ -357,14 +357,13 @@
               </div>
             </div>
 
-            <!-- 5. Online Quick Duel (WIP) -->
-            <div class="mode-pill" data-mode="quick_wip">
+            <!-- 5. Online Quick Duel -->
+            <div class="mode-pill" data-mode="online">
               <span class="mode-pill-icon">🌐</span>
               <div class="mode-pill-info">
                 <span class="mode-pill-name">Online Quick Duel</span>
-                <span class="mode-pill-hint">Global matchmaking</span>
+                <span class="mode-pill-hint">Real-time global matchmaking</span>
               </div>
-              <span class="wip-badge">WIP</span>
             </div>
           </div>
 
@@ -432,6 +431,40 @@
       </header>
 
       <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+      <!-- Bottom Tournament & Score Panel (User Red, Opponent Blue, Center Tournament) -->
+      <div id="gameBottomPanel" class="game-bottom-panel">
+        <!-- User / Player 1 (Red) -->
+        <div class="bottom-player-box red-side">
+          <div class="player-tag-pill red">
+            <span class="pulse-dot red"></span>
+            <span id="bottomUserName">YOU (RED)</span>
+          </div>
+          <div id="bottomUserScore" class="bottom-score-num red">0</div>
+        </div>
+
+        <!-- Center Tournament & Match Status -->
+        <div id="bottomTournamentCenter" class="bottom-center-box">
+          <div id="bottomTourneyBadge" class="tourney-status-badge">⚔️ TOURNAMENT SERIES</div>
+          <div id="bottomTourneyDots" class="tourney-dots-row">
+            <span class="tourney-dot active" data-match="0">1</span>
+            <span class="tourney-dot" data-match="1">2</span>
+            <span class="tourney-dot" data-match="2">3</span>
+            <span class="tourney-dot" data-match="3">4</span>
+            <span class="tourney-dot" data-match="4">5</span>
+          </div>
+          <div id="bottomMatchStatus" class="tourney-match-sub">MATCH 1 OF 5 • FIRST TO 3 WINS</div>
+        </div>
+
+        <!-- Opponent / AI (Blue) -->
+        <div class="bottom-player-box blue-side">
+          <div id="bottomOpponentScore" class="bottom-score-num blue">0</div>
+          <div class="player-tag-pill blue">
+            <span id="bottomOpponentName">AI BOT (BLUE)</span>
+            <span class="pulse-dot blue"></span>
+          </div>
+        </div>
+      </div>
 
       <!-- On-Screen Mobile Virtual Controls -->
       <div id="mobileControls" class="mobile-controls hidden">
