@@ -326,4 +326,37 @@ export class SumoSpinners {
     this.ctx.fillText(`${this.p2Score}`, this.width * 0.65, 48);
     this.ctx.restore();
   }
+
+  getNetworkState() {
+    return {
+      arenaRadius: this.arenaRadius,
+      p1: { x: this.p1.x, y: this.p1.y, vx: this.p1.vx, vy: this.p1.vy, spinAngle: this.p1.spinAngle, alive: this.p1.alive },
+      p2: { x: this.p2.x, y: this.p2.y, vx: this.p2.vx, vy: this.p2.vy, spinAngle: this.p2.spinAngle, alive: this.p2.alive },
+      p1Score: this.p1Score,
+      p2Score: this.p2Score
+    };
+  }
+
+  applyNetworkState(state) {
+    if (!state) return;
+    if (state.arenaRadius !== undefined) this.arenaRadius = state.arenaRadius;
+    if (state.p1) {
+      this.p1.x = state.p1.x;
+      this.p1.y = state.p1.y;
+      this.p1.vx = state.p1.vx;
+      this.p1.vy = state.p1.vy;
+      this.p1.spinAngle = state.p1.spinAngle;
+      this.p1.alive = state.p1.alive;
+    }
+    if (state.p2) {
+      this.p2.x = state.p2.x;
+      this.p2.y = state.p2.y;
+      this.p2.vx = state.p2.vx;
+      this.p2.vy = state.p2.vy;
+      this.p2.spinAngle = state.p2.spinAngle;
+      this.p2.alive = state.p2.alive;
+    }
+    if (state.p1Score !== undefined) this.p1Score = state.p1Score;
+    if (state.p2Score !== undefined) this.p2Score = state.p2Score;
+  }
 }

@@ -445,4 +445,29 @@ export class MicroRace {
 
     this.ctx.restore();
   }
+
+  getNetworkState() {
+    return {
+      p1: { x: this.p1.x, y: this.p1.y, angle: this.p1.angle, speed: this.p1.speed, laps: this.p1.laps },
+      p2: { x: this.p2.x, y: this.p2.y, angle: this.p2.angle, speed: this.p2.speed, laps: this.p2.laps }
+    };
+  }
+
+  applyNetworkState(state) {
+    if (!state) return;
+    if (state.p1) {
+      this.p1.x = state.p1.x;
+      this.p1.y = state.p1.y;
+      this.p1.angle = state.p1.angle;
+      this.p1.speed = state.p1.speed;
+      this.p1.laps = state.p1.laps;
+    }
+    if (state.p2) {
+      this.p2.x = state.p2.x;
+      this.p2.y = state.p2.y;
+      this.p2.angle = state.p2.angle;
+      this.p2.speed = state.p2.speed;
+      this.p2.laps = state.p2.laps;
+    }
+  }
 }

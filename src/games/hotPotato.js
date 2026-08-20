@@ -339,4 +339,35 @@ export class HotPotato {
     this.ctx.fillText(`P2: ${this.p2Score}`, this.width * 0.8, 38);
     this.ctx.restore();
   }
+
+  getNetworkState() {
+    return {
+      p1: { x: this.p1.x, y: this.p1.y, vx: this.p1.vx, vy: this.p1.vy },
+      p2: { x: this.p2.x, y: this.p2.y, vx: this.p2.vx, vy: this.p2.vy },
+      bombHolder: this.bombHolder,
+      fuseTime: this.fuseTime,
+      p1Score: this.p1Score,
+      p2Score: this.p2Score
+    };
+  }
+
+  applyNetworkState(state) {
+    if (!state) return;
+    if (state.p1) {
+      this.p1.x = state.p1.x;
+      this.p1.y = state.p1.y;
+      this.p1.vx = state.p1.vx;
+      this.p1.vy = state.p1.vy;
+    }
+    if (state.p2) {
+      this.p2.x = state.p2.x;
+      this.p2.y = state.p2.y;
+      this.p2.vx = state.p2.vx;
+      this.p2.vy = state.p2.vy;
+    }
+    if (state.bombHolder !== undefined) this.bombHolder = state.bombHolder;
+    if (state.fuseTime !== undefined) this.fuseTime = state.fuseTime;
+    if (state.p1Score !== undefined) this.p1Score = state.p1Score;
+    if (state.p2Score !== undefined) this.p2Score = state.p2Score;
+  }
 }

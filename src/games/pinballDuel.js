@@ -261,4 +261,28 @@ export class PinballDuel {
 
     this.ctx.restore();
   }
+
+  getNetworkState() {
+    return {
+      ball: { x: this.ball.x, y: this.ball.y, vx: this.ball.vx, vy: this.ball.vy },
+      p1: { y: this.p1.y },
+      p2: { y: this.p2.y },
+      p1Score: this.p1Score,
+      p2Score: this.p2Score
+    };
+  }
+
+  applyNetworkState(state) {
+    if (!state) return;
+    if (state.ball) {
+      this.ball.x = state.ball.x;
+      this.ball.y = state.ball.y;
+      this.ball.vx = state.ball.vx;
+      this.ball.vy = state.ball.vy;
+    }
+    if (state.p1) this.p1.y = state.p1.y;
+    if (state.p2) this.p2.y = state.p2.y;
+    if (state.p1Score !== undefined) this.p1Score = state.p1Score;
+    if (state.p2Score !== undefined) this.p2Score = state.p2Score;
+  }
 }

@@ -431,4 +431,37 @@ export class QuickDraw {
 
     this.ctx.restore();
   }
+
+  getNetworkState() {
+    return {
+      state: this.state,
+      signalText: this.signalText,
+      p1Score: this.p1Score,
+      p2Score: this.p2Score,
+      p1Shot: this.p1Shot,
+      p2Shot: this.p2Shot,
+      p1Foul: this.p1Foul,
+      p2Foul: this.p2Foul,
+      p1Time: this.p1Time,
+      p2Time: this.p2Time,
+      p1Grade: this.p1Grade,
+      p2Grade: this.p2Grade
+    };
+  }
+
+  applyNetworkState(state) {
+    if (!state) return;
+    this.state = state.state;
+    this.signalText = state.signalText;
+    if (state.p1Score !== undefined) this.p1Score = state.p1Score;
+    if (state.p2Score !== undefined) this.p2Score = state.p2Score;
+    this.p1Shot = state.p1Shot;
+    this.p2Shot = state.p2Shot;
+    this.p1Foul = state.p1Foul;
+    this.p2Foul = state.p2Foul;
+    this.p1Time = state.p1Time;
+    this.p2Time = state.p2Time;
+    this.p1Grade = state.p1Grade;
+    this.p2Grade = state.p2Grade;
+  }
 }

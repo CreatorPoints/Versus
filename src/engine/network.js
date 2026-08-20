@@ -43,10 +43,13 @@ export class NetworkManager {
   }
 
   initPeer(customId = null) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (this.peer && !this.peer.destroyed) {
-        resolve(this.peer);
-        return;
+        if (this.peer.id === customId || !customId) {
+          resolve(this.peer);
+          return;
+        }
+        this.peer.destroy();
       }
 
       const peerConfig = {
@@ -71,7 +74,7 @@ export class NetworkManager {
         });
 
         this.peer.on('error', (err) => {
-          console.warn('PeerJS Connection Warning:', err.type, err.message);
+          console.warn('PeerJS event:', err.type, err.message);
           resolve(this.peer);
         });
       } catch (err) {
@@ -84,13 +87,11 @@ export class NetworkManager {
   setupConnection(connection, role) {
     this.conn = connection;
     this.role = role;
-    this.connected = true;
 
     this.conn.on('open', () => {
       this.connected = true;
-      this.opponentName = role === 'host' ? 'Challenger (P2)' : 'Match Host (P1)';
+      this.opponentName = role === 'host' ? 'Challenger (P2)' : 'Host (P1)';
       
-      // Handshake
       this.send({
         type: 'HANDSHAKE',
         sender: this.playerId,
@@ -111,6 +112,10 @@ export class NetworkManager {
       this.connected = false;
       this.emit('peer_disconnected');
     });
+
+    this.conn.on('error', () => {
+      this.connected = false;
+    });
   }
 
   // Quick Online Matchmaking
@@ -121,20 +126,19 @@ export class NetworkManager {
 
     await this.initPeer();
 
-    // Broadcast on local channel first
     this.broadcast?.postMessage({
       type: 'SEARCHING_MATCH',
       playerId: this.playerId
     });
 
-    // Matchmaking bucket logic via public room indices
-    const matchBuckets = ['versus_match_us', 'versus_match_eu', 'versus_match_asia', 'versus_match_global'];
-    const targetRoom = matchBuckets[Math.floor(Math.random() * matchBuckets.length)] + '_' + Math.floor(Math.random() * 3);
+    // Random matchmaking queue slots (0 to 5)
+    const slotIdx = Math.floor(Math.random() * 6);
+    const targetRoom = `VERSUS_QUEUE_SLOT_${slotIdx}`;
 
     return new Promise((resolve) => {
       let resolved = false;
 
-      // Try joining target room as guest
+      // 1. Try joining slot as guest
       const joinConn = this.peer.connect(targetRoom, { reliable: true });
       this.setupConnection(joinConn, 'guest');
 
@@ -146,29 +150,29 @@ export class NetworkManager {
         }
       });
 
-      // Timeout fallback: become host of the bucket
+      // 2. If slot is empty, become host of that slot!
       setTimeout(async () => {
         if (!resolved && !this.connected) {
           try {
             if (this.peer) this.peer.destroy();
             await this.initPeer(targetRoom);
             this.role = 'host';
-            onProgress?.('Waiting for challenger to join arena...');
+            onProgress?.('Waiting for challenger to connect...');
 
-            // If no human joins within 5 seconds, fallback to smart AI Challenger!
+            // If no human arrives in 6 seconds, fallback to smart AI
             setTimeout(() => {
               if (!resolved && !this.connected) {
                 resolved = true;
                 this.setupBotMatch();
                 resolve({ role: 'host', bot: true });
               }
-            }, 4500);
+            }, 6000);
           } catch (e) {
             this.setupBotMatch();
             resolve({ role: 'host', bot: true });
           }
         }
-      }, 1800);
+      }, 1500);
 
       this.on('matched', () => {
         if (!resolved) {
@@ -184,7 +188,7 @@ export class NetworkManager {
     this.mode = 'online_room';
     this.role = 'host';
     this.roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const peerRoomId = `VERSUS-${this.roomId}`;
+    const peerRoomId = `VERSUS-ROOM-${this.roomId}`;
 
     if (this.peer) this.peer.destroy();
     await this.initPeer(peerRoomId);
@@ -195,14 +199,13 @@ export class NetworkManager {
   async joinPrivateRoom(code) {
     this.mode = 'online_room';
     this.role = 'guest';
-    this.roomId = code.toUpperCase().trim();
-    const peerRoomId = `VERSUS-${this.roomId}`;
+    this.roomId = code.toUpperCase().replace('VERSUS-', '').replace('ROOM-', '').trim();
+    const peerRoomId = `VERSUS-ROOM-${this.roomId}`;
 
     await this.initPeer();
     const connection = this.peer.connect(peerRoomId, { reliable: true });
     this.setupConnection(connection, 'guest');
 
-    // Also broadcast locally
     this.broadcast?.postMessage({
       type: 'JOIN_ROOM',
       roomId: this.roomId,
@@ -245,10 +248,22 @@ export class NetworkManager {
 
     if (msg.type === 'INPUT') {
       this.emit('remote_input', { role: msg.role, input: msg.input });
+    } else if (msg.type === 'STATE_SYNC') {
+      this.emit('state_sync', { state: msg.state });
     } else if (msg.type === 'GAME_SELECT') {
       this.emit('remote_game_select', { gameKey: msg.gameKey });
     } else if (msg.type === 'GAME_START') {
       this.emit('remote_game_start', { gameKey: msg.gameKey });
+    } else if (msg.type === 'ROUND_RESET') {
+      this.emit('remote_round_reset');
+    } else if (msg.type === 'GAME_EXIT') {
+      this.emit('remote_game_exit');
+    } else if (msg.type === 'CHESS_MOVE') {
+      this.emit('chess_move', msg);
+    } else if (msg.type === 'CHESS_RESIGN') {
+      this.emit('chess_resign', msg);
+    } else if (msg.type === 'TTT_MOVE') {
+      this.emit('ttt_move', msg);
     } else if (msg.type === 'HANDSHAKE') {
       this.emit('matched', { role: this.role, opponent: 'Network Challenger' });
     }

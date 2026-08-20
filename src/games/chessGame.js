@@ -6,6 +6,7 @@
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 import { input } from '../engine/input.js';
+import { network } from '../engine/network.js';
 
 export class ChessGame {
   constructor(canvas, ctx, onGameOver, difficulty = 'normal', onRoundReset = null) {
@@ -63,8 +64,11 @@ export class ChessGame {
     if (this.onRoundReset) this.onRoundReset();
   }
 
-  resign(playerResigning = 1) {
+  resign(playerResigning = 1, isRemote = false) {
     if (this.roundEnding || this.isOver) return;
+    if (!isRemote && network.connected && network.mode !== 'ai' && network.mode !== 'local') {
+      network.send({ type: 'CHESS_RESIGN', playerResigning });
+    }
     const winner = playerResigning === 1 ? 2 : 1;
     const reason = playerResigning === 1 ? 'White Resigned' : 'Black Resigned';
     this.finishGame(winner, reason);
@@ -142,13 +146,20 @@ export class ChessGame {
 
   handleSquareSelect(row, col) {
     if (this.roundEnding || this.animatingPiece) return;
+
+    // Enforce Online Turn Authorization
+    if (network.connected && network.mode !== 'ai' && network.mode !== 'local') {
+      if (network.role === 'host' && this.turn !== 'white') return;
+      if (network.role === 'guest' && this.turn !== 'black') return;
+    }
+
     const piece = this.board[row][col];
     const isWhiteTurn = this.turn === 'white';
 
     if (this.selectedTile) {
       const move = this.validMoves.find((m) => m.toRow === row && m.toCol === col);
       if (move) {
-        this.executeMove(this.selectedTile.row, this.selectedTile.col, row, col);
+        this.executeMove(this.selectedTile.row, this.selectedTile.col, row, col, false);
         this.selectedTile = null;
         this.validMoves = [];
         return;
@@ -166,7 +177,11 @@ export class ChessGame {
     }
   }
 
-  executeMove(fromRow, fromCol, toRow, toCol) {
+  executeMove(fromRow, fromCol, toRow, toCol, isRemote = false) {
+    if (!isRemote && network.connected && network.mode !== 'ai' && network.mode !== 'local') {
+      network.send({ type: 'CHESS_MOVE', fromRow, fromCol, toRow, toCol });
+    }
+
     const piece = this.board[fromRow][fromCol];
     const captured = this.board[toRow][toCol];
     const isWhite = this.turn === 'white';

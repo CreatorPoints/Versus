@@ -5,6 +5,7 @@
 import { sound } from '../audio/sound.js';
 import { particles } from '../engine/particles.js';
 import { input } from '../engine/input.js';
+import { network } from '../engine/network.js';
 
 export class TicTacToe {
   constructor(canvas, ctx, onGameOver, difficulty = 'normal', onRoundReset = null) {
@@ -43,7 +44,13 @@ export class TicTacToe {
   }
 
   update(p1Input, p2Input, isBotP2 = false) {
-    if (this.isOver || this.roundEnding) return;
+    if (this.isOver) return;
+
+    // Enforce Online Turn Authorization
+    if (network.connected && network.mode !== 'ai' && network.mode !== 'local') {
+      if (network.role === 'host' && this.turn !== 'X') return;
+      if (network.role === 'guest' && this.turn !== 'O') return;
+    }
 
     const curInput = this.turn === 'X' ? p1Input : p2Input;
 
@@ -70,7 +77,7 @@ export class TicTacToe {
 
     if (curInput.justAction) {
       const idx = this.cursor.y * 3 + this.cursor.x;
-      this.playMove(idx);
+      this.playMove(idx, false);
     }
 
     // Mouse click handling
@@ -88,7 +95,7 @@ export class TicTacToe {
         const idx = row * 3 + col;
         this.cursor.x = col;
         this.cursor.y = row;
-        this.playMove(idx);
+        this.playMove(idx, false);
       }
     }
 
@@ -97,8 +104,12 @@ export class TicTacToe {
     this.prevMouseDown = input.mouse.down;
   }
 
-  playMove(idx) {
+  playMove(idx, isRemote = false) {
     if (this.board[idx] !== null || this.roundEnding) return false;
+
+    if (!isRemote && network.connected && network.mode !== 'ai' && network.mode !== 'local') {
+      network.send({ type: 'TTT_MOVE', index: idx });
+    }
 
     this.board[idx] = this.turn;
     sound.playShoot(this.turn === 'X' ? 'laser' : 'sword');

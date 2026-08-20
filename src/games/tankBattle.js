@@ -441,4 +441,43 @@ export class TankBattle {
     this.ctx.fillText(`${this.p2Score}`, this.width * 0.65, 45);
     this.ctx.restore();
   }
+
+  getNetworkState() {
+    return {
+      p1: { x: this.p1.x, y: this.p1.y, angle: this.p1.angle, alive: this.p1.alive },
+      p2: { x: this.p2.x, y: this.p2.y, angle: this.p2.angle, alive: this.p2.alive },
+      bullets: this.bullets.map((b) => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, color: b.color, bounces: b.bounces })),
+      p1Score: this.p1Score,
+      p2Score: this.p2Score
+    };
+  }
+
+  applyNetworkState(state) {
+    if (!state) return;
+    if (state.p1) {
+      this.p1.x = state.p1.x;
+      this.p1.y = state.p1.y;
+      this.p1.angle = state.p1.angle;
+      this.p1.alive = state.p1.alive;
+    }
+    if (state.p2) {
+      this.p2.x = state.p2.x;
+      this.p2.y = state.p2.y;
+      this.p2.angle = state.p2.angle;
+      this.p2.alive = state.p2.alive;
+    }
+    if (state.bullets) {
+      this.bullets = state.bullets.map((b) => ({
+        x: b.x,
+        y: b.y,
+        vx: b.vx,
+        vy: b.vy,
+        color: b.color,
+        bounces: b.bounces,
+        radius: 4
+      }));
+    }
+    if (state.p1Score !== undefined) this.p1Score = state.p1Score;
+    if (state.p2Score !== undefined) this.p2Score = state.p2Score;
+  }
 }

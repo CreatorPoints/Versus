@@ -297,6 +297,9 @@ class App {
     document.getElementById('btnExitGame').addEventListener('click', () => {
       sound.playClick();
       sound.stopFootballCrowd();
+      if (network.connected) {
+        network.send({ type: 'GAME_EXIT' });
+      }
       this.showLoading("Returning to game lobby...", 400, () => {
         network.disconnect();
         this.isPlaying = false;
@@ -442,6 +445,9 @@ class App {
       if (this.currentGameInstance) {
         this.currentGameInstance.resetRound();
         countdown.start();
+        if (network.connected) {
+          network.send({ type: 'ROUND_RESET' });
+        }
       }
     });
 
@@ -488,8 +494,11 @@ class App {
     }
   }
 
-  selectGame(gameKey) {
+  selectGame(gameKey, isRemote = false) {
     this.currentGameKey = gameKey;
+    if (!isRemote && network.connected && network.role === 'host') {
+      network.send({ type: 'GAME_SELECT', gameKey });
+    }
     const gameDef = this.allGames.find((g) => g.key === gameKey) || this.allGames[0];
 
     document.getElementById('panelGameTitle').textContent = gameDef.name;
@@ -602,10 +611,60 @@ class App {
   initNetworkListeners() {
     network.on('matched', (data) => {
       sound.playGo();
-      particles.addFloatingText('MATCH FOUND!', this.canvas.width / 2, this.canvas.height / 2, '#0ea5e9', 32);
-      setTimeout(() => {
-        this.launchGame(this.currentGameKey);
-      }, 600);
+      particles.addFloatingText('CONNECTED!', this.canvas.width / 2, this.canvas.height / 2, '#0ea5e9', 32);
+      if (network.role === 'host') {
+        setTimeout(() => {
+          this.launchGame(this.currentGameKey, false);
+        }, 600);
+      }
+    });
+
+    network.on('remote_game_start', (data) => {
+      sound.playGo();
+      this.currentGameKey = data.gameKey;
+      this.launchGame(data.gameKey, true);
+    });
+
+    network.on('remote_game_select', (data) => {
+      this.selectGame(data.gameKey, true);
+    });
+
+    network.on('remote_round_reset', () => {
+      if (this.currentGameInstance && typeof this.currentGameInstance.resetRound === 'function') {
+        this.currentGameInstance.resetRound();
+        countdown.start();
+      }
+    });
+
+    network.on('remote_game_exit', () => {
+      sound.stopFootballCrowd();
+      this.isPlaying = false;
+      countdown.active = false;
+      this.showScreen('lobbyScreen');
+    });
+
+    network.on('chess_move', (data) => {
+      if (this.currentGameInstance && typeof this.currentGameInstance.executeMove === 'function') {
+        this.currentGameInstance.executeMove(data.fromRow, data.fromCol, data.toRow, data.toCol, true);
+      }
+    });
+
+    network.on('chess_resign', (data) => {
+      if (this.currentGameInstance && typeof this.currentGameInstance.resign === 'function') {
+        this.currentGameInstance.resign(data.playerResigning, true);
+      }
+    });
+
+    network.on('ttt_move', (data) => {
+      if (this.currentGameInstance && typeof this.currentGameInstance.playMove === 'function') {
+        this.currentGameInstance.playMove(data.index, true);
+      }
+    });
+
+    network.on('state_sync', (data) => {
+      if (network.role === 'guest' && this.currentGameInstance && typeof this.currentGameInstance.applyNetworkState === 'function') {
+        this.currentGameInstance.applyNetworkState(data.state);
+      }
     });
 
     network.on('remote_input', (data) => {
@@ -647,7 +706,7 @@ class App {
   launchTournamentGame() {
     const current = this.tournamentGames[this.tournamentIndex];
     document.getElementById('matchInfoBadge').textContent = `TOURNAMENT: ${current.name.toUpperCase()} (${this.tournamentIndex + 1}/5)`;
-    this.launchGame(current.key);
+    this.launchGame(current.key, false);
   }
 
   updateBottomPanel() {
@@ -716,9 +775,13 @@ class App {
     }
   }
 
-  launchGame(gameKey) {
+  launchGame(gameKey, isRemote = false) {
     const gameDef = this.allGames.find((g) => g.key === gameKey) || this.allGames[0];
     this.currentGameKey = gameDef.key;
+
+    if (!isRemote && network.connected && network.role === 'host') {
+      network.send({ type: 'GAME_START', gameKey });
+    }
 
     if (this.gameMode !== 'tournament') {
       let modeLabel = 'LOCAL 2P';
@@ -726,6 +789,8 @@ class App {
         modeLabel = `VS AI [${this.difficulty.toUpperCase()}]`;
       } else if (this.gameMode === 'room') {
         modeLabel = 'PRIVATE ROOM';
+      } else if (this.gameMode === 'online') {
+        modeLabel = 'ONLINE DUEL';
       }
       document.getElementById('matchInfoBadge').textContent = `${gameDef.name.toUpperCase()} - ${modeLabel}`;
     }
@@ -871,8 +936,10 @@ class App {
         input.update();
 
         if (network.connected && network.mode !== 'ai' && network.mode !== 'local') {
-          const myInput = network.role === 'host' ? input.p1 : input.p2;
-          network.sendInput(myInput);
+          if (network.role === 'guest') {
+            // Guest sends their local input (input.p1) to Host
+            network.sendInput(input.p1);
+          }
         }
 
         // 1. Process countdown if active
@@ -881,7 +948,20 @@ class App {
         } else {
           // 2. Normal active game updates
           const isBot = this.gameMode === 'ai' || this.gameMode === 'tournament';
-          this.currentGameInstance.update(input.p1, input.p2, isBot);
+          
+          if (network.connected && network.role === 'guest' && typeof this.currentGameInstance.applyNetworkState === 'function') {
+            // Guest updates visual animations; physics state is updated via STATE_SYNC RPC
+          } else {
+            this.currentGameInstance.update(input.p1, input.p2, isBot);
+          }
+
+          // Authoritative Host broadcasts 60fps state snapshot to Guest
+          if (network.connected && network.role === 'host' && typeof this.currentGameInstance.getNetworkState === 'function') {
+            network.send({
+              type: 'STATE_SYNC',
+              state: this.currentGameInstance.getNetworkState()
+            });
+          }
         }
 
         particles.update();

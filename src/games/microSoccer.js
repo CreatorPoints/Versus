@@ -496,4 +496,45 @@ export class MicroSoccer {
     this.ctx.fillText(`${this.p2Score}`, this.width * 0.65, 48);
     this.ctx.restore();
   }
+
+  getNetworkState() {
+    return {
+      ball: { x: this.ball.x, y: this.ball.y, vx: this.ball.vx, vy: this.ball.vy, rotation: this.ball.rotation },
+      p1: { x: this.p1.x, y: this.p1.y, vx: this.p1.vx, vy: this.p1.vy, tilt: this.p1.tilt, flipAngle: this.p1.flipAngle, isFlipping: this.p1.isFlipping },
+      p2: { x: this.p2.x, y: this.p2.y, vx: this.p2.vx, vy: this.p2.vy, tilt: this.p2.tilt, flipAngle: this.p2.flipAngle, isFlipping: this.p2.isFlipping },
+      p1Score: this.p1Score,
+      p2Score: this.p2Score
+    };
+  }
+
+  applyNetworkState(state) {
+    if (!state) return;
+    if (state.ball) {
+      this.ball.x = state.ball.x;
+      this.ball.y = state.ball.y;
+      this.ball.vx = state.ball.vx;
+      this.ball.vy = state.ball.vy;
+      this.ball.rotation = state.ball.rotation;
+    }
+    if (state.p1) {
+      this.p1.x = state.p1.x;
+      this.p1.y = state.p1.y;
+      this.p1.vx = state.p1.vx;
+      this.p1.vy = state.p1.vy;
+      this.p1.tilt = state.p1.tilt;
+      this.p1.flipAngle = state.p1.flipAngle;
+      this.p1.isFlipping = state.p1.isFlipping;
+    }
+    if (state.p2) {
+      this.p2.x = state.p2.x;
+      this.p2.y = state.p2.y;
+      this.p2.vx = state.p2.vx;
+      this.p2.vy = state.p2.vy;
+      this.p2.tilt = state.p2.tilt;
+      this.p2.flipAngle = state.p2.flipAngle;
+      this.p2.isFlipping = state.p2.isFlipping;
+    }
+    if (state.p1Score !== undefined) this.p1Score = state.p1Score;
+    if (state.p2Score !== undefined) this.p2Score = state.p2Score;
+  }
 }
