@@ -612,6 +612,7 @@ class App {
     network.on('matched', (data) => {
       sound.playGo();
       particles.addFloatingText('CONNECTED!', this.canvas.width / 2, this.canvas.height / 2, '#0ea5e9', 32);
+      input.setRemoteP2(network.role === 'host');
       if (network.role === 'host') {
         setTimeout(() => {
           this.launchGame(this.currentGameKey, false);
@@ -621,6 +622,7 @@ class App {
 
     network.on('remote_game_start', (data) => {
       sound.playGo();
+      input.setRemoteP2(false);
       this.currentGameKey = data.gameKey;
       this.launchGame(data.gameKey, true);
     });
@@ -799,6 +801,14 @@ class App {
     const btnResign = document.getElementById('btnChessResign');
     if (btnResign) {
       btnResign.classList.toggle('hidden', gameKey !== 'chess');
+    }
+
+    // Dynamic Mobile Touch Controls (Joystick + Action Button)
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const mobileControls = document.getElementById('mobileControls');
+    if (mobileControls) {
+      const isTurnBased = gameKey === 'chess' || gameKey === 'tictactoe';
+      mobileControls.classList.toggle('hidden', !isTouch || isTurnBased);
     }
 
     this.isPlaying = true;

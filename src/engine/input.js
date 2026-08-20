@@ -30,6 +30,7 @@ class InputManager {
 
     this.virtualEnabled = false;
     this.isLocal2P = false;
+    this.isRemoteP2 = false;
 
     this.initKeyboard();
     this.initMouse();
@@ -145,10 +146,53 @@ class InputManager {
         this.virtualEnabled = true;
       }
     }, { passive: true });
+
+    // Direct Canvas Touch Interaction for Mobile (Chess, Tic-Tac-Toe, etc.)
+    const handleCanvasTouch = (e) => {
+      const canvas = document.getElementById('gameCanvas');
+      if (!canvas) return;
+      const touch = e.touches[0] || e.changedTouches[0];
+      if (!touch) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+
+      this.mouse.canvasX = (touch.clientX - rect.left) * scaleX;
+      this.mouse.canvasY = (touch.clientY - rect.top) * scaleY;
+      this.mouse.active = true;
+      this.mouse.lastMoveTime = performance.now();
+    };
+
+    window.addEventListener('touchstart', (e) => {
+      const canvas = document.getElementById('gameCanvas');
+      if (canvas && e.target === canvas) {
+        this.mouse.down = true;
+        handleCanvasTouch(e);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      const canvas = document.getElementById('gameCanvas');
+      if (canvas && e.target === canvas) {
+        handleCanvasTouch(e);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', (e) => {
+      const canvas = document.getElementById('gameCanvas');
+      if (canvas && e.target === canvas) {
+        handleCanvasTouch(e);
+        this.mouse.down = false;
+      }
+    }, { passive: true });
   }
 
   setLocal2P(isLocal) {
     this.isLocal2P = isLocal;
+  }
+
+  setRemoteP2(isRemote) {
+    this.isRemoteP2 = isRemote;
   }
 
   update() {
@@ -185,34 +229,37 @@ class InputManager {
     this.p1.y = p1Y;
 
     // 2. Process P2 (Arrows + Enter / KeyK / KeyL / Numpad0 + Touch)
-    let p2X = this.getStackVector(this.p2StackX, 'ArrowLeft', 'ArrowRight');
-    let p2Y = this.getStackVector(this.p2StackY, 'ArrowUp', 'ArrowDown');
+    // When P2 is remote (network guest on mobile), DO NOT overwrite P2 inputs!
+    if (!this.isRemoteP2) {
+      let p2X = this.getStackVector(this.p2StackX, 'ArrowLeft', 'ArrowRight');
+      let p2Y = this.getStackVector(this.p2StackY, 'ArrowUp', 'ArrowDown');
 
-    // Virtual Touch P2
-    if (this.touchP2.active) {
-      const dx = this.touchP2.curX - this.touchP2.startX;
-      const dy = this.touchP2.curY - this.touchP2.startY;
-      const dist = Math.hypot(dx, dy);
-      const maxR = 40;
-      if (dist > 5) {
-        const clampedDist = Math.min(dist, maxR) / maxR;
-        p2X = (dx / dist) * clampedDist;
-        p2Y = (dy / dist) * clampedDist;
+      // Virtual Touch P2
+      if (this.touchP2.active) {
+        const dx = this.touchP2.curX - this.touchP2.startX;
+        const dy = this.touchP2.curY - this.touchP2.startY;
+        const dist = Math.hypot(dx, dy);
+        const maxR = 40;
+        if (dist > 5) {
+          const clampedDist = Math.min(dist, maxR) / maxR;
+          p2X = (dx / dist) * clampedDist;
+          p2Y = (dy / dist) * clampedDist;
+        }
       }
-    }
 
-    const p2Action = Boolean(
-      this.isCodeActive(['Enter', 'Numpad0', 'KeyK', 'KeyL', 'Slash']) ||
-      this.touchP2.action
-    );
+      const p2Action = Boolean(
+        this.isCodeActive(['Enter', 'Numpad0', 'KeyK', 'KeyL', 'Slash']) ||
+        this.touchP2.action
+      );
 
-    this.p2.justAction = p2Action && !this.p2.action;
-    if (this.p2.justAction) {
-      this.p2.actionTimestamp = now;
+      this.p2.justAction = p2Action && !this.p2.action;
+      if (this.p2.justAction) {
+        this.p2.actionTimestamp = now;
+      }
+      this.p2.action = p2Action;
+      this.p2.x = p2X;
+      this.p2.y = p2Y;
     }
-    this.p2.action = p2Action;
-    this.p2.x = p2X;
-    this.p2.y = p2Y;
   }
 }
 

@@ -118,11 +118,13 @@ export class NetworkManager {
     });
   }
 
-  // Quick Online Matchmaking
+  // Quick Online Matchmaking (Real players only, zero fake bots)
   async findRandomMatch(onProgress) {
     this.mode = 'online_match';
     this.connected = false;
-    onProgress?.('Scanning global matchmaking pool...');
+    onProgress?.('Connecting to Quick Play arena...');
+
+    const quickRoomId = 'VERSUS-ROOM-GLOBAL';
 
     await this.initPeer();
 
@@ -131,54 +133,33 @@ export class NetworkManager {
       playerId: this.playerId
     });
 
-    // Random matchmaking queue slots (0 to 5)
-    const slotIdx = Math.floor(Math.random() * 6);
-    const targetRoom = `VERSUS_QUEUE_SLOT_${slotIdx}`;
-
     return new Promise((resolve) => {
-      let resolved = false;
-
-      // 1. Try joining slot as guest
-      const joinConn = this.peer.connect(targetRoom, { reliable: true });
+      // 1. Try joining GLOBAL room as guest
+      const joinConn = this.peer.connect(quickRoomId, { reliable: true });
       this.setupConnection(joinConn, 'guest');
 
       joinConn.on('open', () => {
-        if (!resolved) {
-          resolved = true;
-          this.role = 'guest';
-          resolve({ role: 'guest' });
-        }
+        this.role = 'guest';
+        this.connected = true;
+        resolve({ role: 'guest' });
       });
 
-      // 2. If slot is empty, become host of that slot!
+      // 2. If no host exists yet, host the GLOBAL room and wait for any player to connect
       setTimeout(async () => {
-        if (!resolved && !this.connected) {
+        if (!this.connected) {
           try {
             if (this.peer) this.peer.destroy();
-            await this.initPeer(targetRoom);
+            await this.initPeer(quickRoomId);
             this.role = 'host';
-            onProgress?.('Waiting for challenger to connect...');
-
-            // If no human arrives in 6 seconds, fallback to smart AI
-            setTimeout(() => {
-              if (!resolved && !this.connected) {
-                resolved = true;
-                this.setupBotMatch();
-                resolve({ role: 'host', bot: true });
-              }
-            }, 6000);
+            onProgress?.('Waiting for another player to join arena...');
           } catch (e) {
-            this.setupBotMatch();
-            resolve({ role: 'host', bot: true });
+            console.warn('Quick match host error:', e);
           }
         }
-      }, 1500);
+      }, 1200);
 
       this.on('matched', () => {
-        if (!resolved) {
-          resolved = true;
-          resolve({ role: this.role });
-        }
+        resolve({ role: this.role });
       });
     });
   }
@@ -213,15 +194,6 @@ export class NetworkManager {
     });
 
     return true;
-  }
-
-  setupBotMatch() {
-    this.mode = 'ai';
-    this.role = 'host';
-    const botNames = ['CyberShadow', 'ViperX', 'ApexBot', 'PixelSamurai', 'VoltStriker', 'TitanAI', 'NovaRider'];
-    this.opponentName = botNames[Math.floor(Math.random() * botNames.length)];
-    this.connected = true;
-    this.emit('matched', { role: 'host', opponent: this.opponentName });
   }
 
   send(data) {
