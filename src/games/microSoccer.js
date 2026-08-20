@@ -279,33 +279,90 @@ export class MicroSoccer {
     let jump = false;
     let action = false;
 
-    const dx = this.ball.x - this.p2.x;
-    
-    if (this.difficulty === 'baby') {
-      if (dx < -25) moveX = -1;
-      if (dx > 25) moveX = 1;
-      jump = Math.random() < 0.05;
-    } else if (this.difficulty === 'normal') {
-      if (dx < -15) moveX = -1;
-      if (dx > 15) moveX = 1;
-      if (Math.abs(dx) < 60 && this.ball.y < this.p2.y - 20) {
-        jump = true;
-        action = Math.random() < 0.4;
+    // Difficulty-based tuning parameters
+    const lookaheadFrames = this.difficulty === 'demon' ? 24 : this.difficulty === 'hard' ? 18 : this.difficulty === 'normal' ? 14 : 7;
+    const reactionDelay = this.difficulty === 'baby' ? 0.25 : 0.0;
+    const bicycleSkill = this.difficulty === 'demon' ? 0.95 : this.difficulty === 'hard' ? 0.85 : this.difficulty === 'normal' ? 0.65 : 0.2;
+
+    if (Math.random() < reactionDelay) {
+      return { x: 0, y: 0, action: false };
+    }
+
+    // 1. Simulate Ball Trajectory to find best interception point
+    const trajectory = this.predictBallTrajectory(lookaheadFrames);
+    const p2DefendGoalX = this.width - this.goalWidth - 35;
+    const isBallBehind = this.ball.x >= this.p2.x - 10;
+    const isBallInDangerZone = this.ball.x > this.width * 0.68 || (this.ball.x > this.width * 0.5 && this.ball.vx > 1.2);
+
+    // Find if/when ball is at jump interception height (between groundY - 85 and groundY - 20)
+    let interceptPoint = null;
+    for (const pt of trajectory) {
+      if (pt.y < this.groundY - 15 && pt.y > this.groundY - 95) {
+        // Can bot reach this X position in pt.frame frames?
+        const distNeeded = Math.abs(pt.x + 22 - this.p2.x);
+        const maxReachable = this.p2.speed * pt.frame;
+        if (distNeeded <= maxReachable) {
+          interceptPoint = pt;
+          break;
+        }
       }
-    } else if (this.difficulty === 'hard') {
-      if (dx < -10) moveX = -1;
-      if (dx > 10) moveX = 1;
-      if (Math.abs(dx) < 70 && this.ball.y < this.p2.y - 15) {
+    }
+
+    // Target X calculation
+    let targetX = this.ball.x + 26; // Default: stay 26px to the RIGHT of ball so kicks go LEFT
+
+    if (isBallBehind) {
+      // EMERGENCY: Ball is behind bot! NEVER kick towards own goal.
+      // Retreat immediately to goal line to defend or jump over ball
+      targetX = p2DefendGoalX;
+      if (this.ball.x > this.p2.x && Math.abs(this.ball.x - this.p2.x) < 45 && this.p2.isGrounded) {
+        // Jump over/away to avoid bumping it into own net
         jump = true;
-        action = true;
       }
-    } else if (this.difficulty === 'demon') {
-      const targetX = this.ball.x + this.ball.vx * 4;
-      moveX = targetX > this.p2.x ? 1 : -1;
-      if (Math.abs(this.ball.x - this.p2.x) < 80 && this.ball.y < this.p2.y) {
+    } else if (isBallInDangerZone) {
+      // DEFENSIVE MODE: Ball is approaching bot's net
+      if (interceptPoint && interceptPoint.x > this.width * 0.55) {
+        targetX = interceptPoint.x + 20;
+      } else {
+        targetX = Math.max(this.ball.x + 22, p2DefendGoalX);
+      }
+    } else if (this.ball.x < this.width * 0.38) {
+      // OFFENSIVE MIDFIELD PRESSURE: Don't overcommit too deep into P1's corner
+      targetX = Math.max(this.ball.x + 35, this.width * 0.52);
+    } else if (interceptPoint) {
+      // AERIAL INTERCEPTION: Position behind aerial landing point
+      targetX = interceptPoint.x + 24;
+    }
+
+    // Horizontal Movement
+    const dx = targetX - this.p2.x;
+    if (dx < -6) moveX = -1;
+    else if (dx > 6) moveX = 1;
+
+    // 2. Jump & Bicycle Kick Decision
+    const distToBall = Math.hypot(this.ball.x - this.p2.x, this.ball.y - this.p2.y);
+    const isPositionedRightForKick = this.p2.x > this.ball.x - 5; // Bot is on the right side
+
+    // A. Aerial Bicycle Kick / Header
+    if (isPositionedRightForKick && this.ball.y < this.p2.y - 12 && distToBall < 85) {
+      if (this.p2.isGrounded) {
         jump = true;
-        action = true;
+      } else if (Math.random() < bicycleSkill) {
+        action = true; // Trigger aerial bicycle flip
       }
+    }
+
+    // B. Goal Line Header Clearance
+    if (isBallInDangerZone && this.ball.y < this.groundY - 35 && Math.abs(this.ball.x - this.p2.x) < 70) {
+      if (this.p2.isGrounded) {
+        jump = true;
+      }
+      action = true;
+    }
+
+    // C. Ground Chip Shot (When close to P1 and ball is low)
+    if (this.p2.isGrounded && distToBall < 45 && this.p1.x > this.ball.x - 60 && this.p1.x < this.ball.x) {
+      if (Math.random() < 0.45) jump = true; // Chip over P1
     }
 
     return {
@@ -313,6 +370,37 @@ export class MicroSoccer {
       y: jump ? -1 : 0,
       action
     };
+  }
+
+  predictBallTrajectory(framesAhead) {
+    let simX = this.ball.x;
+    let simY = this.ball.y;
+    let simVx = this.ball.vx;
+    let simVy = this.ball.vy;
+    const positions = [];
+
+    for (let f = 1; f <= framesAhead; f++) {
+      simVy += this.ball.gravity;
+      simX += simVx;
+      simY += simVy;
+      simVx *= 0.99;
+
+      if (simY + this.ball.radius >= this.groundY) {
+        simY = this.groundY - this.ball.radius;
+        simVy = -simVy * this.ball.bounce;
+      }
+
+      if (simX - this.ball.radius <= this.goalWidth) {
+        simX = this.goalWidth + this.ball.radius;
+        simVx = -simVx * this.ball.bounce;
+      } else if (simX + this.ball.radius >= this.width - this.goalWidth) {
+        simX = this.width - this.goalWidth - this.ball.radius;
+        simVx = -simVx * this.ball.bounce;
+      }
+
+      positions.push({ x: simX, y: simY, vx: simVx, vy: simVy, frame: f });
+    }
+    return positions;
   }
 
   draw() {
