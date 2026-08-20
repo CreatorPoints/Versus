@@ -175,15 +175,20 @@ class InputManager {
       this.mouse.down
     );
 
+    const now = performance.now();
     this.p1.justAction = p1Action && !this.p1.action;
+    if (this.p1.justAction) {
+      this.p1.actionTimestamp = now;
+    }
     this.p1.action = p1Action;
     this.p1.x = p1X;
     this.p1.y = p1Y;
 
-    // 2. Process P2 (Arrows + Enter / NumpadEnter / L / K / Slash / P + Touch)
+    // 2. Process P2 (Arrows + Enter / KeyK / KeyL / Numpad0 + Touch)
     let p2X = this.getStackVector(this.p2StackX, 'ArrowLeft', 'ArrowRight');
     let p2Y = this.getStackVector(this.p2StackY, 'ArrowUp', 'ArrowDown');
 
+    // Virtual Touch P2
     if (this.touchP2.active) {
       const dx = this.touchP2.curX - this.touchP2.startX;
       const dy = this.touchP2.curY - this.touchP2.startY;
@@ -197,11 +202,14 @@ class InputManager {
     }
 
     const p2Action = Boolean(
-      this.isCodeActive(['Enter', 'NumpadEnter', 'KeyL', 'KeyK', 'Slash', 'KeyP', 'Numpad0']) ||
+      this.isCodeActive(['Enter', 'Numpad0', 'KeyK', 'KeyL', 'Slash']) ||
       this.touchP2.action
     );
 
     this.p2.justAction = p2Action && !this.p2.action;
+    if (this.p2.justAction) {
+      this.p2.actionTimestamp = now;
+    }
     this.p2.action = p2Action;
     this.p2.x = p2X;
     this.p2.y = p2Y;
